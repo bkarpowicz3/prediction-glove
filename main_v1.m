@@ -34,7 +34,9 @@ save('features.mat', 'feat1', 'feat2', 'feat3');
 
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
-
+% ----- Not sure we need this anymore if we use 
+% ----- winLen = 80 ms and winDisp = 40 ms so that the features line up
+% ----- exactly with the data glove time points
 glove1_down = [];
 glove2_down = [];
 glove3_down = [];
@@ -52,7 +54,7 @@ Y3 = linreg(feat3, glove3_down);
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
-
+% ----- if we use winLen = 80 ms and winDisp = 40 ms, also do not need this
 up1 = [];
 up2 = [];
 up3 = [];

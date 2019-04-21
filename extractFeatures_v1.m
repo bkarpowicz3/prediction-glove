@@ -20,8 +20,8 @@ for i = 1:size(bands, 1)
     % however, bands 2-5 end up being one index longer than band 1 
     Nfft = length(ecog) * 100 * (10/band_diff); 
     frequency = ((0:1/Nfft:1-1/Nfft)*fs).'; %define frequency vector 
-    for j = 1:size(ecog, 2)
-        signal = ecog(:,i);
+    for j = 1:size(ecog, 1)
+        signal = ecog(i,:);
         f = fft(signal,Nfft); %compute frequency space 
         mag = abs(f); 
         % for extracting the magnitudes within the band 
