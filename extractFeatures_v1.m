@@ -1,11 +1,10 @@
 function features = extractFeatures_v1(ecog, fs)
 
-<<<<<<< HEAD
 M = @(x) mean(x); % define mean function
 numFeats = 6;     % number of features per channel
 
-winLen = 100e-3;    % window length (s)
-winDisp = 50e-3;    % window displacement (s)
+winLen = 80e-3;    % window length (s)
+winDisp = 40e-3;    % window displacement (s)
 numWins = floor((size(ecog, 1)-winLen*fs) / (winDisp*fs)) + 1; % number of windows
 
 bands = [5 15; 20 25; 75 115; 125 160; 160 175];
@@ -103,8 +102,8 @@ for i = 1:size(ecog, 2) % iterate over number of channels
     avgFreq = reshape(avFreq, numFeats, numWins)';
     features(:, ((i-1)*numFeats+1).*(1:numFeats)) = avgFreq; 
 end
-=======
-M = @(x) mean(x); % define mean function 
+
+M = @(x) mean(x); % define mean function
 features = zeros(5998, 62);
 
 % compute average time domain voltage for each channel
@@ -135,6 +134,5 @@ for i = 1:size(bands, 1)
         features(:, end+1) = avFreq(1:5998)'; %chop off extra index 
     end 
 end 
->>>>>>> dbc8d7a3ee7022a6ab14622ca687972afe36363c
 
 end 
