@@ -1,8 +1,8 @@
 %% Load subject data 
 % According to guide/recitation 
 
-userID = 'renyueqi';
-userlog = 'ren_ieeglogin.bin';
+userID = 'bkarpowicz3';
+userlog = 'bka_ieeglogin.bin';
 
 session = IEEGSession('I521_Sub1_Training_ecog', userID, userlog);
 ecog1 = session.data(1).getvalues(1:300000, 1:62);
@@ -13,23 +13,19 @@ test1 = session.data(1).getvalues(1:300000, 1:62);
 
 sR = session.data.sampleRate;
 
-% session = IEEGSession('I521_Sub2_Training_ecog', userID, userlog);
-% % Here's where I ran into this error (calling next line):
-% %   Index exceeds the number of array elements (48).
-% %   Error in IEEGDataset/getvalues (line 441)
-% %               allReqSampleRate = allSampleRates(chIdx);
-ecog2 = session.data(1).getvalues(1:300000, 1:62); 
+session = IEEGSession('I521_Sub2_Training_ecog', userID, userlog);
+ecog2 = session.data(1).getvalues(1:300000, 1:48); 
 session = IEEGSession('I521_Sub2_Training_dg', userID, userlog);
 glove2 = session.data(1).getvalues(1:147500, 1:5);
 session = IEEGSession('I521_Sub2_Leaderboard_ecog', userID, userlog);
-test2 = session.data(1).getvalues(1:300000, 1:62);
+test2 = session.data(1).getvalues(1:300000, 1:48);
 
 session = IEEGSession('I521_Sub3_Training_ecog', userID, userlog);
-ecog3 = session.data(1).getvalues(1:300000, 1:62);
+ecog3 = session.data(1).getvalues(1:300000, 1:64);
 session = IEEGSession('I521_Sub3_Training_dg', userID, userlog);
 glove3 = session.data(1).getvalues(1:147500, 1:5);
 session = IEEGSession('I521_Sub3_Leaderboard_ecog', userID, userlog);
-test3 = session.data(1).getvalues(1:300000, 1:62);
+test3 = session.data(1).getvalues(1:300000, 1:64);
 
 %% Extract Features 
 
@@ -54,16 +50,16 @@ end
 
 %% Linear Regression 
 
-Y1 = linreg(feat1, glove1_down, size(feat1, 1));
-Y2 = linreg(feat2, glove2_down, size(feat2, 1));
-Y3 = linreg(feat3, glove3_down, size(feat3, 1));
+Y1 = linreg(feat1, glove1_down, size(glove1_down, 1));
+Y2 = linreg(feat2, glove2_down, size(glove2_down, 1));
+Y3 = linreg(feat3, glove3_down, size(glove3_down, 1));
 
 %% Cubic Interpolation of Results 
 % Bring data from every 40ms back to 1000 Hz. 
 up1 = [];
 up2 = [];
 up3 = [];
-resized = length(glove1)/(factor*1e-3*sR);
+resized = length(glove1)/(factor*1e-3*sR)+1;
 
 for i = 1:5
     up1(:,i) = spline(1:resized, Y1(:,i), 1:1/factor:resized); %off by 1 problem?? should be 1/50
@@ -74,14 +70,14 @@ end
 %% Visualize prediction of train data 
 
 figure();
-plot(up1(:,1));
+plot(up1(:,2));
 hold on;
-plot(glove1(:,1)); 
+plot(glove1(:,2)); 
 
 
 %% Save 
 
-predicted_dg = cell{1,3};
+predicted_dg = cell(1,3);
 predicted_dg{1} = up1(1:147500);
 predicted_dg{2} = up2(1:147500);
 predicted_dg{3} = up3(1:147500);

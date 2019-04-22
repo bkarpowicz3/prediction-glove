@@ -2,7 +2,7 @@ function Y = linreg(features, labels, len)
 
 R = [];
 N = 3;
-M = len-N; % Manually making this line up with length of feature matrix
+M = len; % Manually making this line up with length of feature matrix
 % Dimensions of R
 n = 1 + 62*(N+1)*6; % 1488, number of features/repeats/channels, column
 cols = 2:4:n; % All unique feature column indices
