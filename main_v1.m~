@@ -67,27 +67,14 @@ for i = 1:5
 %     up3(:,i) = spline(1:2950, Y3(:,i), 1:1/51:2950);
 end 
 
-%% Zero pad upsampled 
-
-up1 = [zeros(150, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
-
 %% Visualize prediction of train data 
 
 figure();
-plot(up1(:, 1));
+plot(up1(:,1));
 hold on;
-plot(glove1(:, 1)); 
+plot(glove1(:,1)); 
 
-% this looks quite bad
-
-%% Calculate correlation
-
-corr1 = zeros(1, 5);
-for i = 1:5             % iterate over fingers
-    corr1(i) = corr(glove1(:, i), up1(:, i));
-end
-
-avgcorr1 = mean(corr1)
+% this looks quite bad.
 
 %% Save 
 
@@ -97,3 +84,4 @@ predicted_dg{2} = up2(1:147500);
 predicted_dg{3} = up3(1:147500);
 
 save('checkpoint1.mat', 'predicted_dg');
+

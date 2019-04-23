@@ -12,7 +12,7 @@ numWins = floor((length(x)-winLen*fs) / (winDisp*fs)) + 1; % number of windows
 nVarargs = length(varargin);        % number of extra features
 features = zeros(1, numWins*(nVarargs+1));
 
-warning('off','all')
+warning('off', 'all')
 
 % calculate features within window
 for i = 0:numWins-1
