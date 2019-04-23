@@ -10,7 +10,6 @@ function features = MovingWinFeats(x, fs, winLen, winDisp, featFn, varargin)
 
 numWins = floor((length(x)-winLen*fs) / (winDisp*fs)) + 1; % number of windows
 nVarargs = length(varargin);        % number of extra features
-disp(nVarargs)
 features = zeros(1, numWins*(nVarargs+1));
 
 warning('off','all')
