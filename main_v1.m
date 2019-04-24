@@ -32,11 +32,6 @@ feat3 = extractFeatures_v1(ecog3, sR);
 
 save('features.mat', 'feat1', 'feat2', 'feat3');
 
-%%
-feat1 = extractFeatures_v2(ecog1, sR);
-feat2 = extractFeatures_v2(ecog2, sR);
-feat3 = extractFeatures_v2(ecog3, sR);
-
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
 
@@ -59,11 +54,6 @@ Y1 = linreg(feat1, glove1_down, feat1);
 Y2 = linreg(feat2, glove2_down, feat2);
 Y3 = linreg(feat3, glove3_down, feat3);
 
-%%
-Y1 = linreg_v2(feat1, glove1_down, feat1);
-Y2 = linreg_v2(feat2, glove2_down, feat2);
-Y3 = linreg_v2(feat3, glove3_down, feat3);
-
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
 
@@ -73,8 +63,8 @@ up3 = [];
 
 for i = 1:5
     up1(:, i) = spline(1:size(Y1, 1), Y1(:, i), 1:1/50:size(Y1, 1)); %off by 1 problem?? should be 1/50
-    up2(:,i) = spline(1:size(Y2, 1), Y2(:,i), 1:1/50:size(Y2, 1));
-    up3(:,i) = spline(1:size(Y3, 1), Y3(:,i), 1:1/50:size(Y3, 1));
+    up2(:, i) = spline(1:size(Y2, 1), Y2(:, i), 1:1/50:size(Y2, 1));
+    up3(:, i) = spline(1:size(Y3, 1), Y3(:, i), 1:1/50:size(Y3, 1));
 end 
 
 %% Zero pad upsampled 
@@ -198,12 +188,6 @@ testfeat3 = extractFeatures_v1(test3, sR);
 
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
 
-%% using version 2
-
-testfeat1 = extractFeatures_v2(test1, sR);
-testfeat2 = extractFeatures_v2(test2, sR);
-testfeat3 = extractFeatures_v2(test3, sR);
-
 %%
 
 testpred1 = linreg(feat1, glove1_down, testfeat1);
@@ -230,3 +214,70 @@ predicted_dg{2} = testup2(1:147500, 1:5);
 predicted_dg{3} = testup3(1:147500, 1:5);
 
 save('checkpoint1.mat', 'predicted_dg');
+
+%% Logistic Regression: Create Labels
+
+% Threshold at 1.4 
+threshold = 1.4;
+biglove1 = double((glove1 > threshold));
+biglove2 = double((glove2 > threshold));
+biglove3 = double((glove3 > threshold));
+% Average neighboring class 1 labels within 4s
+neighborLen = 4*sR;
+biglove = {biglove1, biglove2, biglove3};
+for g = 1:3
+    currglove = biglove{1, g};
+    for finger = 1:5
+        data = currglove(:, finger);
+        newlabels = data;
+        for i = 1:length(data) - neighborLen
+            window = data(i:i+neighborLen);
+            indices = find(window == 1);
+            if length(indices) > 1
+                window(indices(1):indices(end)) = ones(1, indices(end)-indices(1) + 1);
+            end
+            newlabels(i:i+neighborLen) = window;
+        end
+        currglove(:, finger) = newlabels;
+    end
+    biglove{1, g} = currglove;
+end
+disp('Finished logistic thresholding')
+
+%% Visualize threshold over raw data
+
+figure % change threshold for glove 3 to be at 0.5
+plot(glove3(:,3))
+hold on
+plot(biglove{1, 3}(:,3))
+
+%% Downsample new labels to match features
+
+biglove1_down = [];
+biglove2_down = [];
+biglove3_down = [];
+% Temporary: can remove following 3 lines
+biglove1 = double(biglove{1, 1});
+biglove2 = double(biglove{1, 2});
+biglove3 = double(biglove{1, 3});
+
+for i = 1:5
+    biglove1_down(:, end+1) = decimate(biglove1(:, i), 50);
+    biglove2_down(:, end+1) = decimate(biglove2(:, i), 50);
+    biglove3_down(:, end+1) = decimate(biglove3(:, i), 50);
+end 
+
+biglove1_down = biglove1_down(1:end-1, :);
+biglove2_down = biglove2_down(1:end-1, :);
+biglove3_down = biglove3_down(1:end-1, :);
+
+%% Train logistic classifier
+
+log1 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob1 = mnrval(log1, feat1);
+log2 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob2 = mnrval(log2, feat2);
+log3 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob3 = mnrval(log3, feat3);
+
+%% Combine logistic with linear regression

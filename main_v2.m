@@ -26,9 +26,9 @@ test3 = session.data(1).getvalues(1:147500, 1:64);
 
 %% Extract Features 
 
-feat1 = extractFeatures_v1(ecog1, sR);
-feat2 = extractFeatures_v1(ecog2, sR);
-feat3 = extractFeatures_v1(ecog3, sR);
+feat1 = extractFeatures_v2(ecog1, sR);
+feat2 = extractFeatures_v2(ecog2, sR);
+feat3 = extractFeatures_v2(ecog3, sR);
 
 save('features.mat', 'feat1', 'feat2', 'feat3');
 
@@ -50,9 +50,9 @@ glove3_down = glove3_down(1:end-1, :);
 
 %% Linear Regression 
 
-Y1 = linreg(feat1, glove1_down, feat1);
-Y2 = linreg(feat2, glove2_down, feat2);
-Y3 = linreg(feat3, glove3_down, feat3);
+Y1 = linreg_v2(feat1, glove1_down, feat1);
+Y2 = linreg_v2(feat2, glove2_down, feat2);
+Y3 = linreg_v2(feat3, glove3_down, feat3);
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
@@ -63,8 +63,8 @@ up3 = [];
 
 for i = 1:5
     up1(:, i) = spline(1:size(Y1, 1), Y1(:, i), 1:1/50:size(Y1, 1)); %off by 1 problem?? should be 1/50
-%     up2(:, i) = spline(1:size(Y2, 1), Y2(:, i), 1:1/50:size(Y2, 1));
-%     up3(:, i) = spline(1:size(Y3, 1), Y3(:, i), 1:1/50:size(Y3, 1));
+    up2(:,i) = spline(1:size(Y2, 1), Y2(:,i), 1:1/50:size(Y2, 1));
+    up3(:,i) = spline(1:size(Y3, 1), Y3(:,i), 1:1/50:size(Y3, 1));
 end 
 
 %% Zero pad upsampled 
@@ -89,8 +89,8 @@ corr2 = zeros(1, 5);
 corr3 = zeros(1, 5);
 for i = 1:5             % iterate over fingers
     corr1(i) = corr(glove1(:, i), up1(:, i));
-%     corr2(i) = corr(glove2(:, i), up2(:, i));
-%     corr3(i) = corr(glove3(:, i), up3(:, i));
+    corr2(i) = corr(glove2(:, i), up2(:, i));
+    corr3(i) = corr(glove3(:, i), up3(:, i));
 end
 
 avgcorr1 = mean(corr1)
@@ -122,7 +122,7 @@ end
 crosscorr1 = zeros(numfold, 5);
 crosscorr2 = zeros(numfold, 5);
 crosscorr3 = zeros(numfold, 5);
-for i = 1:length(folds)     % fold that is testing set
+for i = 1%:length(folds)     % fold that is testing set
     trainfold1 = [];
     fingers1 = [];
     trainfold2 = [];
@@ -136,18 +136,18 @@ for i = 1:length(folds)     % fold that is testing set
             trainfold1 = [trainfold1; feat1(folds{j}, :)];
             fingers1 = [fingers1; glove1_down(folds{j}, :)];
             
-%             trainfold2 = [trainfold2; feat2(folds{j}, :)];
-%             fingers2 = [fingers2; glove2_down(folds{j}, :)];
-%             
-%             trainfold3 = [trainfold3; feat3(folds{j}, :)];
-%             fingers3 = [fingers3; glove3_down(folds{j}, :)];
+            trainfold2 = [trainfold2; feat2(folds{j}, :)];
+            fingers2 = [fingers2; glove2_down(folds{j}, :)];
+            
+            trainfold3 = [trainfold3; feat3(folds{j}, :)];
+            fingers3 = [fingers3; glove3_down(folds{j}, :)];
         end
     end
     
     % train model
     Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :));
-%     Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :));
-%     Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :));
+    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :));
+    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :));
     
     up1 = [];
     up2 = [];
@@ -155,36 +155,36 @@ for i = 1:length(folds)     % fold that is testing set
     
     for l = 1:5
         up1(:, l) = spline(1:size(Y1, 1), Y1(:, l), 1:1/50:size(Y1, 1)); %off by 1 problem?? should be 1/50
-%         up2(:, l) = spline(1:size(Y2, 1), Y2(:, l), 1:1/50:size(Y2, 1));
-%         up3(:, l) = spline(1:size(Y3, 1), Y3(:, l), 1:1/50:size(Y3, 1));
+        up2(:, l) = spline(1:size(Y2, 1), Y2(:, l), 1:1/50:size(Y2, 1));
+        up3(:, l) = spline(1:size(Y3, 1), Y3(:, l), 1:1/50:size(Y3, 1));
     end
     
     up1 = [zeros(150, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
-%     up2 = [zeros(150, 5); up2; zeros(49, 5)];
-%     up3 = [zeros(150, 5); up3; zeros(49, 5)];
+    up2 = [zeros(150, 5); up2; zeros(49, 5)];
+    up3 = [zeros(150, 5); up3; zeros(49, 5)];
     
     testlabel1 = glove1(foldsfull{i}, :);
-%     testlabel2 = glove2(foldsfull{i}, :);
-%     testlabel3 = glove3(foldsfull{i}, :);
+    testlabel2 = glove2(foldsfull{i}, :);
+    testlabel3 = glove3(foldsfull{i}, :);
     for k = 1:5
         crosscorr1(i, k) = corr(testlabel1(:, k), up1(:, k));
-%         crosscorr2(i, k) = corr(testlabel2(:, k), up2(:, k));
-%         crosscorr3(i, k) = corr(testlabel3(:, k), up3(:, k));
+        crosscorr2(i, k) = corr(testlabel2(:, k), up2(:, k));
+        crosscorr3(i, k) = corr(testlabel3(:, k), up3(:, k));
     end
 end
 
 avgcorr1 = mean(crosscorr1)
-% avgcorr2 = mean(crosscorr2)
-% avgcorr3 = mean(crosscorr3)
+avgcorr2 = mean(crosscorr2)
+avgcorr3 = mean(crosscorr3)
 
-% totalcorr = [avgcorr1([1, 2, 3, 5]), avgcorr2([1, 2, 3, 5]), avgcorr3([1, 2, 3, 5])];
-% avgcorr = mean(totalcorr)
+totalcorr = [avgcorr1([1, 2, 3, 5]), avgcorr2([1, 2, 3, 5]), avgcorr3([1, 2, 3, 5])];
+avgcorr = mean(totalcorr)
 
 %% Testing extract features
 
-testfeat1 = extractFeatures_v1(test1, sR);
-testfeat2 = extractFeatures_v1(test2, sR);
-testfeat3 = extractFeatures_v1(test3, sR);
+testfeat1 = extractFeatures_v2(test1, sR);
+testfeat2 = extractFeatures_v2(test2, sR);
+testfeat3 = extractFeatures_v2(test3, sR);
 
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
 
@@ -216,7 +216,6 @@ predicted_dg{3} = testup3(1:147500, 1:5);
 save('checkpoint1.mat', 'predicted_dg');
 
 %% Logistic Regression: Create Labels
-
 % Threshold at 1.4 
 threshold = 1.4;
 biglove1 = double((glove1 > threshold));
@@ -245,14 +244,12 @@ end
 disp('Finished logistic thresholding')
 
 %% Visualize threshold over raw data
-
 figure % change threshold for glove 3 to be at 0.5
 plot(glove3(:,3))
 hold on
 plot(biglove{1, 3}(:,3))
 
 %% Downsample new labels to match features
-
 biglove1_down = [];
 biglove2_down = [];
 biglove3_down = [];
@@ -272,7 +269,6 @@ biglove2_down = biglove2_down(1:end-1, :);
 biglove3_down = biglove3_down(1:end-1, :);
 
 %% Train logistic classifier
-
 log1 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
 prob1 = mnrval(log1, feat1);
 log2 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
