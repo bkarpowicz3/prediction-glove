@@ -134,13 +134,12 @@ predicted_dg{3} = testup3(1:147500, 1:5);
 
 save('checkpoint1.mat', 'predicted_dg');
 
-%% Logistic Regression
-
+%% Logistic Regression: Create Labels
 % Threshold at 1.4 
 threshold = 1.4;
-biglove1 = (glove1 > threshold);
-biglove2 = (glove2 > threshold);
-biglove3 = (glove3 > threshold);
+biglove1 = double((glove1 > threshold));
+biglove2 = double((glove2 > threshold));
+biglove3 = double((glove3 > threshold));
 % Average neighboring class 1 labels within 4s
 neighborLen = 4*sR;
 biglove = {biglove1, biglove2, biglove3};
@@ -168,5 +167,32 @@ figure % change threshold for glove 3 to be at 0.5
 plot(glove3(:,3))
 hold on
 plot(biglove{1, 3}(:,3))
+
+%% Downsample new labels to match features
+biglove1_down = [];
+biglove2_down = [];
+biglove3_down = [];
+% Temporary: can remove following 3 lines
+biglove1 = double(biglove{1, 1});
+biglove2 = double(biglove{1, 2});
+biglove3 = double(biglove{1, 3});
+
+for i = 1:5
+    biglove1_down(:, end+1) = decimate(biglove1(:, i), 50);
+    biglove2_down(:, end+1) = decimate(biglove2(:, i), 50);
+    biglove3_down(:, end+1) = decimate(biglove3(:, i), 50);
+end 
+
+biglove1_down = biglove1_down(1:end-1, :);
+biglove2_down = biglove2_down(1:end-1, :);
+biglove3_down = biglove3_down(1:end-1, :);
+
+%% Train logistic classifier
+log1 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob1 = mnrval(log1, feat1);
+log2 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob2 = mnrval(log2, feat2);
+log3 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob3 = mnrval(log3, feat3);
 
 %% Combine logistic with linear regression
