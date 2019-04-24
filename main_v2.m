@@ -127,7 +127,7 @@ testup1 = [zeros(150, 5); testup1; zeros(49, 5)];
 testup2 = [zeros(150, 5); testup2; zeros(49, 5)];
 testup3 = [zeros(150, 5); testup3; zeros(49, 5)];
 
-predicted_dg = cell(1, 3);
+predicted_dg = cell(3, 1);
 predicted_dg{1} = testup1(1:147500, 1:5);
 predicted_dg{2} = testup2(1:147500, 1:5);
 predicted_dg{3} = testup3(1:147500, 1:5);
@@ -136,4 +136,37 @@ save('checkpoint1.mat', 'predicted_dg');
 
 %% Logistic Regression
 
+% Threshold at 1.4 
+threshold = 1.4;
+biglove1 = (glove1 > threshold);
+biglove2 = (glove2 > threshold);
+biglove3 = (glove3 > threshold);
+% Average neighboring class 1 labels within 4s
+neighborLen = 4*sR;
+biglove = {biglove1, biglove2, biglove3};
+for g = 1:3
+    currglove = biglove{1, g};
+    for finger = 1:5
+        data = currglove(:, finger);
+        newlabels = data;
+        for i = 1:length(data) - neighborLen
+            window = data(i:i+neighborLen);
+            indices = find(window == 1);
+            if length(indices) > 1
+                window(indices(1):indices(end)) = ones(1, indices(end)-indices(1) + 1);
+            end
+            newlabels(i:i+neighborLen) = window;
+        end
+        currglove(:, finger) = newlabels;
+    end
+    biglove{1, g} = currglove;
+end
+disp('Finished logistic thresholding')
 
+%% Visualize threshold over raw data
+figure % change threshold for glove 3 to be at 0.5
+plot(glove3(:,3))
+hold on
+plot(biglove{1, 3}(:,3))
+
+%% Combine logistic with linear regression
