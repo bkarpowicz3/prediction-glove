@@ -32,6 +32,11 @@ feat3 = extractFeatures_v1(ecog3, sR);
 
 save('features.mat', 'feat1', 'feat2', 'feat3');
 
+%%
+feat1 = extractFeatures_v2(ecog1, sR);
+feat2 = extractFeatures_v2(ecog2, sR);
+feat3 = extractFeatures_v2(ecog3, sR);
+
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
 
@@ -53,6 +58,11 @@ glove3_down = glove3_down(1:end-1, :);
 Y1 = linreg(feat1, glove1_down, feat1);
 Y2 = linreg(feat2, glove2_down, feat2);
 Y3 = linreg(feat3, glove3_down, feat3);
+
+%%
+Y1 = linreg_v2(feat1, glove1_down, feat1);
+Y2 = linreg_v2(feat2, glove2_down, feat2);
+Y3 = linreg_v2(feat3, glove3_down, feat3);
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
@@ -188,6 +198,12 @@ testfeat3 = extractFeatures_v1(test3, sR);
 
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
 
+%% using version 2
+
+testfeat1 = extractFeatures_v2(test1, sR);
+testfeat2 = extractFeatures_v2(test2, sR);
+testfeat3 = extractFeatures_v2(test3, sR);
+
 %%
 
 testpred1 = linreg(feat1, glove1_down, testfeat1);
@@ -208,7 +224,7 @@ testup1 = [zeros(150, 5); testup1; zeros(49, 5)];
 testup2 = [zeros(150, 5); testup2; zeros(49, 5)];
 testup3 = [zeros(150, 5); testup3; zeros(49, 5)];
 
-predicted_dg = cell(1, 3);
+predicted_dg = cell(3, 1);
 predicted_dg{1} = testup1(1:147500, 1:5);
 predicted_dg{2} = testup2(1:147500, 1:5);
 predicted_dg{3} = testup3(1:147500, 1:5);
