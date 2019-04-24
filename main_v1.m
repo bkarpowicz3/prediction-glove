@@ -55,7 +55,7 @@ glove3_down = glove3_down(1:end-1, :);
 
 %% Linear Regression 
 
-Y1 = linreg(feat1, glove1_down, feat1);
+Y1 = linreg_new(feat1, glove1_down, feat1);
 Y2 = linreg(feat2, glove2_down, feat2);
 Y3 = linreg(feat3, glove3_down, feat3);
 
