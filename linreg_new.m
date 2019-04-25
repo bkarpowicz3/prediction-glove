@@ -1,12 +1,13 @@
 function Y = linreg_new(features, labels, testing)
 
 N = 3;
-M = size(features, 1)-N;
+M = size(features, 1)-N+1;
 
 %create R matrix for test (if different than train) 
 testR = [];
 start = 1;
 if ~isequal(features, testing)
+    M = size(testing) - N + 1;
     %for each row in R 
     for i = 1:M
         row = [];
@@ -34,6 +35,7 @@ for i = 1:M
     start = start + 1;
     R = [R; row];
 end 
+% R = R';
 
 a = R'*R;
 ainv = a \ eye(size(a, 1)); % need to compute inverse this way or else you get Inf 

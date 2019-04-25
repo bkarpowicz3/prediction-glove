@@ -30,12 +30,17 @@ feat1 = extractFeatures_v1(ecog1, sR);
 feat2 = extractFeatures_v1(ecog2, sR);
 feat3 = extractFeatures_v1(ecog3, sR);
 
-save('features.mat', 'feat1', 'feat2', 'feat3');
+save('features_9.mat', 'feat1', 'feat2', 'feat3');
 
-%%
-feat1 = extractFeatures_v2(ecog1, sR);
-feat2 = extractFeatures_v2(ecog2, sR);
-feat3 = extractFeatures_v2(ecog3, sR);
+%% Turn glove into digital vector 
+
+glove1_bin = glove1 >= 0.3;
+glove2_bin = glove2 >= 0.3;
+glove3_bin = glove3 >= 0.3;
+
+glove1_smoothed = glove1_bin .* glove1;
+glove2_smoothed = glove2_bin .* glove2; 
+glove3_smoothed = glove3_bin .* glove3;
 
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
@@ -55,14 +60,9 @@ glove3_down = glove3_down(1:end-1, :);
 
 %% Linear Regression 
 
-Y1 = linreg_new(feat1, glove1_down, feat1);
+Y1 = linreg(feat1, glove1_down, feat1);
 Y2 = linreg(feat2, glove2_down, feat2);
 Y3 = linreg(feat3, glove3_down, feat3);
-
-%%
-Y1 = linreg_v2(feat1, glove1_down, feat1);
-Y2 = linreg_v2(feat2, glove2_down, feat2);
-Y3 = linreg_v2(feat3, glove3_down, feat3);
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
@@ -73,8 +73,8 @@ up3 = [];
 
 for i = 1:5
     up1(:, i) = spline(1:size(Y1, 1), Y1(:, i), 1:1/50:size(Y1, 1)); %off by 1 problem?? should be 1/50
-    up2(:,i) = spline(1:size(Y2, 1), Y2(:,i), 1:1/50:size(Y2, 1));
-    up3(:,i) = spline(1:size(Y3, 1), Y3(:,i), 1:1/50:size(Y3, 1));
+    up2(:, i) = spline(1:size(Y2, 1), Y2(:, i), 1:1/50:size(Y2, 1));
+    up3(:, i) = spline(1:size(Y3, 1), Y3(:, i), 1:1/50:size(Y3, 1));
 end 
 
 %% Zero pad upsampled 
@@ -88,9 +88,55 @@ up3 = [zeros(150, 5); up3; zeros(49, 5)];
 figure();
 plot(up1(:, 1));
 hold on;
-plot(glove1(:, 1)); 
+% plot(glove1(:, 1)); 
 
 % this looks quite bad
+
+%% Postprocess finger predictions 
+
+thresh = 0.8;
+below_thresh1 = up1 .* (up1 <= thresh);
+above_thresh1 = up1 .* (up1 > thresh); 
+thresh = 0.8;
+below_thresh2 = up2 .* (up2 <= thresh);
+above_thresh2 = up2 .* (up2 > thresh); 
+thresh = 0.7;
+below_thresh3 = up3 .* (up3 <= thresh);
+above_thresh3 = up3 .* (up3 > thresh); 
+M = @(x) mean(x);
+% winLen = 500e-3;
+% winDisp = 250e-3;
+
+up1_new = zeros(300000, 5);
+up2_new = zeros(300000, 5);
+up3_new = zeros(300000, 5);
+
+for i = 1:5
+    winLen = 800e-3;
+    winDisp = 400e-3;
+    smoothed_glove1 = MovingWinFeats(below_thresh1(:,i), sR, winLen, winDisp, M);
+    smoothed_glove1(end+1:end+2) = [0 0];
+    smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/400:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
+    up1_new(:,i) = above_thresh1(:,i) + smoothed_glove1_(1:end-1)';
+    
+    winLen = 1000e-3;
+    winDisp = 500e-3;
+    smoothed_glove2 = MovingWinFeats(below_thresh2(:,i), sR, winLen, winDisp, M);
+    smoothed_glove2(end+1:end+2) = [0 0];
+    smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/500:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
+    up2_new(:,i) = above_thresh2(:,i) + smoothed_glove2_(1:end-1)';
+    
+    winLen = 500e-3;
+    winDisp = 250e-3;
+    smoothed_glove3 = MovingWinFeats(below_thresh3(:,i), sR, winLen, winDisp, M);
+    smoothed_glove3(end+1:end+2) = [0 0];
+    smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/250:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
+    up3_new(:,i) = above_thresh3(:,i) + smoothed_glove3_(1:end-1)';
+end 
+
+figure()
+plot(glove1(:,1));
+plot(up1_new(:,1));
 
 %% Calculate correlation
 
@@ -98,9 +144,9 @@ corr1 = zeros(1, 5);
 corr2 = zeros(1, 5);
 corr3 = zeros(1, 5);
 for i = 1:5             % iterate over fingers
-    corr1(i) = corr(glove1(:, i), up1(:, i));
-    corr2(i) = corr(glove2(:, i), up2(:, i));
-    corr3(i) = corr(glove3(:, i), up3(:, i));
+    corr1(i) = corr(glove1(:, i), up1_new(:, i));
+    corr2(i) = corr(glove2(:, i), up2_new(:, i));
+    corr3(i) = corr(glove3(:, i), up3_new(:, i));
 end
 
 avgcorr1 = mean(corr1)
@@ -173,13 +219,50 @@ for i = 1:length(folds)     % fold that is testing set
     up2 = [zeros(150, 5); up2; zeros(49, 5)];
     up3 = [zeros(150, 5); up3; zeros(49, 5)];
     
+    % smooth the results 
+    thresh = 0.8;
+    below_thresh1 = up1 .* (up1 <= thresh);
+    above_thresh1 = up1 .* (up1 > thresh); 
+    below_thresh2 = up2 .* (up2 <= thresh);
+    above_thresh2 = up2 .* (up2 > thresh); 
+    thresh = 0.7;
+    below_thresh3 = up3 .* (up3 <= thresh);
+    above_thresh3 = up3 .* (up3 > thresh); 
+    
+    up1_new = zeros(30000, 5);
+    up2_new = zeros(30000, 5);
+    up3_new = zeros(30000, 5);
+    
+    for w = 1:5
+        winLen = 800e-3;
+        winDisp = 400e-3;
+        smoothed_glove1 = MovingWinFeats(below_thresh1(:,w), sR, winLen, winDisp, M);
+        smoothed_glove1(end+1:end+2) = [0 0];
+        smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/400:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
+        up1_new(:,w) = above_thresh1(:,w) + smoothed_glove1_(1:end-1)';
+        
+        winLen = 1000e-3;
+        winDisp = 500e-3;
+        smoothed_glove2 = MovingWinFeats(below_thresh2(:,w), sR, winLen, winDisp, M);
+        smoothed_glove2(end+1:end+2) = [0 0];
+        smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/500:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
+        up2_new(:,w) = above_thresh2(:,w) + smoothed_glove2_(1:end-1)';
+        
+        winLen = 500e-3;
+        winDisp = 250e-3;
+        smoothed_glove3 = MovingWinFeats(below_thresh3(:,w), sR, winLen, winDisp, M);
+        smoothed_glove3(end+1:end+2) = [0 0];
+        smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/250:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
+        up3_new(:,w) = above_thresh3(:,w) + smoothed_glove3_(1:end-1)';
+    end 
+    
     testlabel1 = glove1(foldsfull{i}, :);
     testlabel2 = glove2(foldsfull{i}, :);
     testlabel3 = glove3(foldsfull{i}, :);
     for k = 1:5
-        crosscorr1(i, k) = corr(testlabel1(:, k), up1(:, k));
-        crosscorr2(i, k) = corr(testlabel2(:, k), up2(:, k));
-        crosscorr3(i, k) = corr(testlabel3(:, k), up3(:, k));
+        crosscorr1(i, k) = corr(testlabel1(:, k), up1_new(:, k));
+        crosscorr2(i, k) = corr(testlabel2(:, k), up2_new(:, k));
+        crosscorr3(i, k) = corr(testlabel3(:, k), up3_new(:, k));
     end
 end
 
@@ -192,17 +275,11 @@ avgcorr = mean(totalcorr)
 
 %% Testing extract features
 
-testfeat1 = extractFeatures_v1(test1, sR);
-testfeat2 = extractFeatures_v1(test2, sR);
-testfeat3 = extractFeatures_v1(test3, sR);
+testfeat1 = extractFeatures_spec(test1, sR);
+testfeat2 = extractFeatures_spec(test2, sR);
+testfeat3 = extractFeatures_spec(test3, sR);
 
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
-
-%% using version 2
-
-testfeat1 = extractFeatures_v2(test1, sR);
-testfeat2 = extractFeatures_v2(test2, sR);
-testfeat3 = extractFeatures_v2(test3, sR);
 
 %%
 
@@ -215,7 +292,7 @@ testup2 = [];
 testup3 = [];
 
 for i = 1:5
-    testup1(:, i) = spline(1:size(testpred1, 1), testpred1(:, i), 1:1/50:size(testpred1, 1)); %off by 1 problem?? should be 1/50
+    testup1(:, i) = spline(1:size(testpred1, 1), testpred1(:, i), 1:1/50:size(testpred1, 1));
     testup2(:, i) = spline(1:size(testpred2, 1), testpred2(:, i), 1:1/50:size(testpred2, 1));
     testup3(:, i) = spline(1:size(testpred3, 1), testpred3(:, i), 1:1/50:size(testpred3, 1));
 end 
@@ -224,9 +301,119 @@ testup1 = [zeros(150, 5); testup1; zeros(49, 5)];
 testup2 = [zeros(150, 5); testup2; zeros(49, 5)];
 testup3 = [zeros(150, 5); testup3; zeros(49, 5)];
 
-predicted_dg = cell(3, 1);
-predicted_dg{1} = testup1(1:147500, 1:5);
-predicted_dg{2} = testup2(1:147500, 1:5);
-predicted_dg{3} = testup3(1:147500, 1:5);
+thresh = 0.8;
+below_thresh1 = testup1 .* (testup1 <= thresh);
+above_thresh1 = testup1 .* (testup1 > thresh); 
+below_thresh2 = testup2 .* (testup2 <= thresh);
+above_thresh2 = testup2 .* (testup2 > thresh); 
+thresh = 0.7;
+below_thresh3 = testup3 .* (testup3 <= thresh);
+above_thresh3 = testup3 .* (testup3 > thresh); 
+M = @(x) mean(x);
+% winLen = 500e-3;
+% winDisp = 250e-3;
 
-save('checkpoint1.mat', 'predicted_dg');
+up1_new = zeros(147500, 5);
+up2_new = zeros(147500, 5);
+up3_new = zeros(147500, 5);
+
+for i = 1:5
+    winLen = 1000e-3;
+    winDisp = 500e-3;
+    smoothed_glove1 = MovingWinFeats(below_thresh1(:,i), sR, winLen, winDisp, M);
+    smoothed_glove1(end+1:end+3) = [0 0 0];
+    smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/500:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
+    up1_new(:,i) = above_thresh1(:,i) + smoothed_glove1_(1:end-1)';
+    
+    winLen = 1000e-3;
+    winDisp = 500e-3;
+    smoothed_glove2 = MovingWinFeats(below_thresh2(:,i), sR, winLen, winDisp, M);
+    smoothed_glove2(end+1:end+2) = [0 0];
+    smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/500:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
+    up2_new(:,i) = above_thresh2(:,i) + smoothed_glove2_(1:end-1)';
+    
+    winLen = 500e-3;
+    winDisp = 250e-3;
+    smoothed_glove3 = MovingWinFeats(below_thresh3(:,i), sR, winLen, winDisp, M);
+    smoothed_glove3(end+1:end+2) = [0 0];
+    smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/250:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
+    up3_new(:,i) = above_thresh3(:,i) + smoothed_glove3_(1:end-1)';
+end 
+
+predicted_dg = cell(3, 1);
+predicted_dg{1} = up1_new(1:147500, 1:5);
+predicted_dg{2} = up2_new(1:147500, 1:5);
+predicted_dg{3} = up3_new(1:147500, 1:5);
+
+save('checkpoint1_.mat', 'predicted_dg');
+
+%% 
+figure()
+plot(up1_new(1:147500, 5));
+
+%% Logistic Regression: Create Labels
+
+% Threshold at 1.4 
+threshold = 1.4;
+biglove1 = double((glove1 > threshold));
+biglove2 = double((glove2 > threshold));
+biglove3 = double((glove3 > threshold));
+% Average neighboring class 1 labels within 4s
+neighborLen = 4*sR;
+biglove = {biglove1, biglove2, biglove3};
+for g = 1:3
+    currglove = biglove{1, g};
+    for finger = 1:5
+        data = currglove(:, finger);
+        newlabels = data;
+        for i = 1:length(data) - neighborLen
+            window = data(i:i+neighborLen);
+            indices = find(window == 1);
+            if length(indices) > 1
+                window(indices(1):indices(end)) = ones(1, indices(end)-indices(1) + 1);
+            end
+            newlabels(i:i+neighborLen) = window;
+        end
+        currglove(:, finger) = newlabels;
+    end
+    biglove{1, g} = currglove;
+end
+disp('Finished logistic thresholding')
+
+%% Visualize threshold over raw data
+
+figure % change threshold for glove 3 to be at 0.5
+plot(glove3(:,3))
+hold on
+plot(biglove{1, 3}(:,3))
+
+%% Downsample new labels to match features
+
+biglove1_down = [];
+biglove2_down = [];
+biglove3_down = [];
+% Temporary: can remove following 3 lines
+biglove1 = double(biglove{1, 1});
+biglove2 = double(biglove{1, 2});
+biglove3 = double(biglove{1, 3});
+
+for i = 1:5
+    biglove1_down(:, end+1) = decimate(biglove1(:, i), 50);
+    biglove2_down(:, end+1) = decimate(biglove2(:, i), 50);
+    biglove3_down(:, end+1) = decimate(biglove3(:, i), 50);
+end 
+
+biglove1_down = biglove1_down(1:end-1, :);
+biglove2_down = biglove2_down(1:end-1, :);
+biglove3_down = biglove3_down(1:end-1, :);
+
+%% Train logistic classifier
+
+log1 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob1 = mnrval(log1, feat1);
+log2 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob2 = mnrval(log2, feat2);
+log3 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+prob3 = mnrval(log3, feat3);
+
+%% Combine logistic with linear regression
