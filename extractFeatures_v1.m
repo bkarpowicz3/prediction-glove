@@ -1,7 +1,10 @@
 function features = extractFeatures_v1(ecog, fs)
 
 M = @(x) mean(x); % define mean function
-numFeats = 6;     % number of features per channel
+Area = @(x) sum(abs(x)); %area function (HW3) 
+Energy = @(x) sum(x.^2); %energy function (HW3) 
+LLfn = @(x) sum(abs(diff(x))); %line length (HW3)
+numFeats = 9;     % number of features per channel
 
 winLen = 100e-3;    % window length (s)
 winDisp = 50e-3;    % window displacement (s)
@@ -87,8 +90,8 @@ features = zeros(numWins, size(ecog, 2)*numFeats);
 
 for i = 1:size(ecog, 2) % iterate over number of channels
     signal = ecog(:, i);
-    avFreq = MovingWinFeats(signal, fs, winLen, winDisp, M, ...
-        @findFreq1, @findFreq2, @findFreq3, @findFreq4, @findFreq5);
+    avFreq = MovingWinFeats(signal, fs, winLen, winDisp, M, Area, Energy,...
+        LLfn, @findFreq1, @findFreq2, @findFreq3, @findFreq4, @findFreq5);
     disp([num2str(i) ' ' num2str(length(avFreq))]) %for visualizing progress
     avgFreq = reshape(avFreq, numFeats, numWins)';
     column = (i-1)*numFeats+1;

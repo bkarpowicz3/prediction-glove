@@ -1,34 +1,51 @@
 %% Load subject data 
 % According to guide/recitation 
 
-session = IEEGSession('I521_Sub1_Training_ecog', 'bkarpowicz3', 'bka_ieeglogin.bin');
+userID = 'renyueqi';
+userlogin = 'ren_ieeglogin.bin';
+
+session = IEEGSession('I521_Sub1_Training_ecog', userID, userlogin);
 ecog1 = session.data(1).getvalues(1:300000, 1:62);
-session = IEEGSession('I521_Sub1_Training_dg', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub1_Training_dg', userID, userlogin);
 glove1 = session.data(1).getvalues(1:300000, 1:5);
-session = IEEGSession('I521_Sub1_Leaderboard_ecog', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub1_Leaderboard_ecog', userID, userlogin);
 test1 = session.data(1).getvalues(1:147500, 1:62);
 
 sR = session.data.sampleRate;
 
-session = IEEGSession('I521_Sub2_Training_ecog', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub2_Training_ecog', userID, userlogin);
 ecog2 = session.data(1).getvalues(1:300000, 1:48);
-session = IEEGSession('I521_Sub2_Training_dg', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub2_Training_dg', userID, userlogin);
 glove2 = session.data(1).getvalues(1:300000, 1:5);
-session = IEEGSession('I521_Sub2_Leaderboard_ecog', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub2_Leaderboard_ecog', userID, userlogin);
 test2 = session.data(1).getvalues(1:147500, 1:48);
 
-session = IEEGSession('I521_Sub3_Training_ecog', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub3_Training_ecog', userID, userlogin);
 ecog3 = session.data(1).getvalues(1:300000, 1:64);
-session = IEEGSession('I521_Sub3_Training_dg', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub3_Training_dg', userID, userlogin);
 glove3 = session.data(1).getvalues(1:300000, 1:5);
-session = IEEGSession('I521_Sub3_Leaderboard_ecog', 'bkarpowicz3', 'bka_ieeglogin.bin');
+session = IEEGSession('I521_Sub3_Leaderboard_ecog', userID, userlogin);
 test3 = session.data(1).getvalues(1:147500, 1:64);
+
+%% Preprocess glove data
+% Eliminate DC component
+glove1 = glove1 - mean(glove1);
+glove2 = glove2 - mean(glove2);
+glove3 = glove3 - mean(glove3);
+
+% Sliding window average
+M = @(x) mean(x);
+winLen = 0.1; % s
+winDisp = 0.05; % s
+glove1 = MovingWinFeats(glove1, sR, winLen, winDisp, M);
+glove2 = MovingWinFeats(glove2, sR, winLen, winDisp, M);
+glove3 = MovingWinFeats(glove3, sR, winLen, winDisp, M);
 
 %% Extract Features 
 
-feat1 = extractFeatures_v2(ecog1, sR);
-feat2 = extractFeatures_v2(ecog2, sR);
-feat3 = extractFeatures_v2(ecog3, sR);
+feat1 = extractFeatures_v1(ecog1, sR);
+feat2 = extractFeatures_v1(ecog2, sR);
+feat3 = extractFeatures_v1(ecog3, sR);
 
 save('features.mat', 'feat1', 'feat2', 'feat3');
 
@@ -182,17 +199,17 @@ avgcorr = mean(totalcorr)
 
 %% Testing extract features
 
-testfeat1 = extractFeatures_v2(test1, sR);
-testfeat2 = extractFeatures_v2(test2, sR);
-testfeat3 = extractFeatures_v2(test3, sR);
+testfeat1 = extractFeatures_v1(test1, sR);
+testfeat2 = extractFeatures_v1(test2, sR);
+testfeat3 = extractFeatures_v1(test3, sR);
 
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
 
 %%
 
-testpred1 = linreg(feat1, glove1_down, testfeat1);
-testpred2 = linreg(feat2, glove2_down, testfeat2);
-testpred3 = linreg(feat3, glove2_down, testfeat3);
+testpred1 = linreg_v2(feat1, glove1_down, testfeat1);
+testpred2 = linreg_v2(feat2, glove2_down, testfeat2);
+testpred3 = linreg_v2(feat3, glove2_down, testfeat3);
 
 testup1 = [];
 testup2 = [];
@@ -216,8 +233,8 @@ predicted_dg{3} = testup3(1:147500, 1:5);
 save('checkpoint1.mat', 'predicted_dg');
 
 %% Logistic Regression: Create Labels
-% Threshold at 1.4 
-threshold = 1.4;
+% Threshold at 0.3 <-- 0.5 <-- 1.4 
+threshold = 0.3;
 biglove1 = double((glove1 > threshold));
 biglove2 = double((glove2 > threshold));
 biglove3 = double((glove3 > threshold));
@@ -245,9 +262,9 @@ disp('Finished logistic thresholding')
 
 %% Visualize threshold over raw data
 figure % change threshold for glove 3 to be at 0.5
-plot(glove3(:,3))
+plot(glove3(:,5))
 hold on
-plot(biglove{1, 3}(:,3))
+plot(biglove{1, 3}(:,5))
 
 %% Downsample new labels to match features
 biglove1_down = [];
@@ -268,12 +285,46 @@ biglove1_down = biglove1_down(1:end-1, :);
 biglove2_down = biglove2_down(1:end-1, :);
 biglove3_down = biglove3_down(1:end-1, :);
 
-%% Train logistic classifier
-log1 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
-prob1 = mnrval(log1, feat1);
-log2 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+%% Train logistic classifier --> Takes a looooooooooooooooooong time to run
+% Tip: run each logistic training in parallel or on different machines
+log1 = mnrfit(feat1, biglove1_down); % weights
+prob1 = mnrval(log1, feat1); % probability of training data
+log2 = mnrfit(feat2, biglove2_down);
 prob2 = mnrval(log2, feat2);
-log3 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
+log3 = mnrfit(feat3, biglove3_down);
 prob3 = mnrval(log3, feat3);
 
-%% Combine logistic with linear regression
+save('logweights.mat', 'log1', 'log2', 'log3');
+save('trainlogprob.mat', 'prob1', 'prob2', 'prob3');
+
+%% Combine logistic with linear regression to generate predictions
+testprob1 = mnrval(log1, testfeat1);
+testprob2 = mnrval(log2, testfeat2);
+testprob3 = mnrval(log3, testfeat3);
+
+% Multiply linear with logistic regression result; alpha = 1
+logweighted1 = testpred1.*testprob1;
+logweighted2 = testpred2.*testprob2;
+logweighted3 = testpred3.*testprob3;
+
+% Spline interpolate
+testup1 = [];
+testup2 = [];
+testup3 = [];
+
+for i = 1:5
+    testup1(:, i) = spline(1:size(logweighted1, 1), logweighted1(:, i), 1:1/50:size(logweighted1, 1)); %off by 1 problem?? should be 1/50
+    testup2(:, i) = spline(1:size(logweighted2, 1), logweighted2(:, i), 1:1/50:size(logweighted2, 1));
+    testup3(:, i) = spline(1:size(logweighted3, 1), logweighted3(:, i), 1:1/50:size(logweighted3, 1));
+end 
+
+testup1 = [zeros(150, 5); testup1; zeros(49, 5)];
+testup2 = [zeros(150, 5); testup2; zeros(49, 5)];
+testup3 = [zeros(150, 5); testup3; zeros(49, 5)];
+
+predicted_dg = cell(3, 1);
+predicted_dg{1} = testup1(1:147500, 1:5);
+predicted_dg{2} = testup2(1:147500, 1:5);
+predicted_dg{3} = testup3(1:147500, 1:5);
+
+save('logcheckpoint1.mat', 'predicted_dg');
