@@ -41,6 +41,23 @@ glove1 = MovingWinFeats(glove1, sR, winLen, winDisp, M);
 glove2 = MovingWinFeats(glove2, sR, winLen, winDisp, M);
 glove3 = MovingWinFeats(glove3, sR, winLen, winDisp, M);
 
+% Common average referencing montage
+car_ecog1 = ecog1;
+car_ecog2 = ecog2;
+car_ecog3 = ecog3;
+
+for t = 1:size(ecog1, 1)
+    car_ecog1(t, :) = ecog1(t, :) - mean(ecog1(t, :));
+    car_ecog2(t, :) = ecog2(t, :) - mean(ecog2(t, :));
+    car_ecog3(t, :) = ecog3(t, :) - mean(ecog3(t, :));
+end
+
+%% CAR visually does not make big difference
+figure
+plot(ecog1(:, 60))
+hold on
+plot(car_ecog1(:, 60))
+
 %% Extract Features 
 
 feat1 = extractFeatures_v1(ecog1, sR);
@@ -176,9 +193,9 @@ for i = 1%:length(folds)     % fold that is testing set
         up3(:, l) = spline(1:size(Y3, 1), Y3(:, l), 1:1/50:size(Y3, 1));
     end
     
-    up1 = [zeros(150, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
-    up2 = [zeros(150, 5); up2; zeros(49, 5)];
-    up3 = [zeros(150, 5); up3; zeros(49, 5)];
+    up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
+    up2 = [zeros(150, 5); up2; zeros(99, 5)];
+    up3 = [zeros(150, 5); up3; zeros(99, 5)];
     
     testlabel1 = glove1(foldsfull{i}, :);
     testlabel2 = glove2(foldsfull{i}, :);
@@ -261,10 +278,10 @@ end
 disp('Finished logistic thresholding')
 
 %% Visualize threshold over raw data
-figure % change threshold for glove 3 to be at 0.5
-plot(glove3(:,5))
+figure % change threshold for glove 3 to be at 0.3
+plot(glove1(:,3))
 hold on
-plot(biglove{1, 3}(:,5))
+plot(biglove{1, 1}(:,3))
 
 %% Downsample new labels to match features
 biglove1_down = [];
