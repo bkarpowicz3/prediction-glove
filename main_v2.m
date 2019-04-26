@@ -103,9 +103,18 @@ end
 
 %% Zero pad upsampled 
 
-up1 = [zeros(150, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
-up2 = [zeros(150, 5); up2; zeros(49, 5)];
-up3 = [zeros(150, 5); up3; zeros(49, 5)];
+up1 = [zeros(250, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
+up2 = [zeros(250, 5); up2; zeros(49, 5)];
+up3 = [zeros(250, 5); up3; zeros(49, 5)];
+
+%%
+figure
+subplot(2,1,1)
+plot(uptrial(:, 1))
+xlim([299900-1000 299900])
+subplot(2,1,2)
+plot(glove1(:, 1))
+xlim([299900-1000 299900])
 
 %% Visualize prediction of train data 
 
@@ -156,7 +165,7 @@ end
 crosscorr1 = zeros(numfold, 5);
 crosscorr2 = zeros(numfold, 5);
 crosscorr3 = zeros(numfold, 5);
-for i = 1%:length(folds)     % fold that is testing set
+for i = 1:3     % fold that is testing set
     trainfold1 = [];
     fingers1 = [];
     trainfold2 = [];
@@ -179,9 +188,9 @@ for i = 1%:length(folds)     % fold that is testing set
     end
     
     % train model
-    Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :));
-    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :));
-    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :));
+    Y1 = linreg_v2(trainfold1, fingers1, feat1(folds{i}, :));
+    Y2 = linreg_v2(trainfold2, fingers2, feat2(folds{i}, :));
+    Y3 = linreg_v2(trainfold3, fingers3, feat3(folds{i}, :));
     
     up1 = [];
     up2 = [];
@@ -193,9 +202,9 @@ for i = 1%:length(folds)     % fold that is testing set
         up3(:, l) = spline(1:size(Y3, 1), Y3(:, l), 1:1/50:size(Y3, 1));
     end
     
-    up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
-    up2 = [zeros(150, 5); up2; zeros(99, 5)];
-    up3 = [zeros(150, 5); up3; zeros(99, 5)];
+    up1 = [zeros(200, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
+    up2 = [zeros(200, 5); up2; zeros(49, 5)];
+    up3 = [zeros(200, 5); up3; zeros(49, 5)];
     
     testlabel1 = glove1(foldsfull{i}, :);
     testlabel2 = glove2(foldsfull{i}, :);

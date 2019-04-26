@@ -5,7 +5,7 @@ function Y = linreg(features, labels, testing)
 %           testing - matrix to test model on
 % output: predictions of linear regression model
 
-N = 3;
+N = 4;
 M = size(features, 1);
 numFeats = size(features, 2);
 featsPer = 9;                   % features/channel
@@ -27,7 +27,7 @@ end
 
 R = ones(M-N, numFeats*N+1);
 %for each row
-for i = 1:(M-N+1)
+for i = 1:(M-N)
     % fixed pretty sure...
     for j = 1:numChannels       % over # channels
         row = features(i:i+N-1, ((j-1)*featsPer+1):((j-1)*featsPer+featsPer))';
@@ -39,7 +39,7 @@ end
 
 a = R'*R;
 ainv = a \ eye(size(a, 1)); % need to compute inverse this way or else you get Inf 
-B = ainv*(R'*labels(N:end, :));
+B = ainv*(R'*labels(N+1:end, :));
 
 % depending on testing data
 if isequal(features, testing)
