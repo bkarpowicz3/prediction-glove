@@ -7,10 +7,10 @@ testfeat3 = extractFeatures_v1(test3, sR);
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
 
 %%
-
-testpred1 = linreg(feat1, glove1_down, testfeat1);
-testpred2 = linreg(feat2, glove2_down, testfeat2);
-testpred3 = linreg(feat3, glove2_down, testfeat3);
+numFeats = 6;
+testpred1 = linreg(feat1, glove1_down, testfeat1, numFeats);
+testpred2 = linreg(feat2, glove2_down, testfeat2, numFeats);
+testpred3 = linreg(feat3, glove2_down, testfeat3, numFeats);
 
 testup1 = [];
 testup2 = [];
@@ -22,9 +22,9 @@ for i = 1:5
     testup3(:, i) = spline(1:size(testpred3, 1), testpred3(:, i), 1:1/50:size(testpred3, 1));
 end 
 
-testup1 = [zeros(150, 5); testup1; zeros(99, 5)];
-testup2 = [zeros(150, 5); testup2; zeros(99, 5)];
-testup3 = [zeros(150, 5); testup3; zeros(99, 5)];
+testup1 = [zeros(150, 5); testup1(1:147350, :)];
+testup2 = [zeros(150, 5); testup2(1:147350, :)];
+testup3 = [zeros(150, 5); testup3(1:147350, :)];
 
 %% Postprocess finger predictions 
 sR = 1000;
@@ -70,18 +70,26 @@ end
 
 %% Visualize prediction of train data 
 
+min = 1;
+max = 16000;
+
 figure();
 subplot(4,1,1)
 plot(up1(:, 1));
+xlim([min max])
 subplot(4,1,2)
 plot(up1(:, 2))
+xlim([min max])
 subplot(4,1,3)
 plot(up1(:, 3));
+xlim([min max])
 subplot(4,1,4)
-
+xlim([min max])
 plot(up1(:, 5)); 
+xlim([min max])
 
 figure();
+xlim([min max])
 subplot(4,1,1)
 plot(up2(:, 1));
 subplot(4,1,2)
@@ -92,6 +100,7 @@ subplot(4,1,4)
 plot(up2(:, 5)); 
 
 figure();
+xlim([min max])
 subplot(4,1,1)
 plot(up3(:, 1));
 subplot(4,1,2)
