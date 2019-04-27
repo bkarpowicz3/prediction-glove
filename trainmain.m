@@ -36,8 +36,8 @@ save('features.mat', 'feat1', 'feat2', 'feat3');
 % subject 1 - 55
 % subject 2 - 21 & 38
 
-feat1 = [feat1(:, 1:329) feat1(:, 336:end)];
-feat2 = [feat2(:, 1:125) feat2(:, 132:227) feat2(:, 234:end)];
+% feat1 = [feat1(:, 1:329) feat1(:, 336:end)];
+% feat2 = [feat2(:, 1:125) feat2(:, 132:227) feat2(:, 234:end)];
 
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
@@ -54,6 +54,15 @@ end
 glove1_down = glove1_down(1:end-1, :);
 glove2_down = glove2_down(1:end-1, :);
 glove3_down = glove3_down(1:end-1, :);
+
+%% Get binary labels for glove data 
+
+thresh = 1;
+glove1_bin = glove1_down >= thresh;
+thresh = 0.8;
+glove2_bin = glove2_down >= thresh;
+thresh = 0.6;
+glove3_bin = glove3_down >= thresh;
 
 %% Linear Regression 
 numFeats = 6;
@@ -92,15 +101,73 @@ plot(up1(:, 1));
 hold on;
 plot(glove1(:, 1)); 
 
+%% Predict binary state of glove using features
+
+resub_bin1 = zeros(5999, 5);
+resub_bin2 = zeros(5999, 5);
+resub_bin3 = zeros(5999, 5);
+
+for k = 1:5
+    model1 = fitcknn(feat1, glove1_bin(:,k), ...
+        'Distance', 'Euclidean', ...
+        'Exponent', [], ...
+        'NumNeighbors', 1, ...
+        'DistanceWeight', 'Equal', ...
+        'Standardize', true, ...
+        'ClassNames', [0; 1]);
+    [resubs, ~, ~] = predict(model1, feat1);
+    resub_bin1(:,k) = resubs;
+    
+    model2 = fitcknn(feat2, glove2_bin(:,k), ...
+        'Distance', 'Euclidean', ...
+        'Exponent', [], ...
+        'NumNeighbors', 1, ...
+        'DistanceWeight', 'Equal', ...
+        'Standardize', true, ...
+        'ClassNames', [0; 1]);
+    [resubs, ~, ~] = predict(model2, feat2);
+    resub_bin2(:,k) = resubs;
+    
+    model3 = fitcknn(feat3, glove3_bin(:,k), ...
+        'Distance', 'Euclidean', ...
+        'Exponent', [], ...
+        'NumNeighbors', 1, ...
+        'DistanceWeight', 'Equal', ...
+        'Standardize', true, ...
+        'ClassNames', [0; 1]);
+    [resubs, ~, ~] = predict(model3, feat3);
+    resub_bin3(:,k) = resubs;
+end 
+
+%% Upsample Binary Predictions 
+
+resub1 = zeros(300000, 5);
+resub2 = zeros(300000, 5);
+resub3 = zeros(300000, 5);
+
+for i = 1:5 
+    up = spline(1:size(resub_bin1, 1), resub_bin1(:,i), 1:1/50:size(resub_bin1, 1)); 
+    up = [zeros(150, 1); up'; zeros(99, 1)];
+    resub1(:,i) = up(1:300000);
+    
+    up = spline(1:size(resub_bin2, 1), resub_bin2(:,i), 1:1/50:size(resub_bin2, 1)); 
+    up = [zeros(150, 1); up'; zeros(99, 1)];
+    resub2(:,i) = up(1:300000);
+    
+    up = spline(1:size(resub_bin3, 1), resub_bin3(:,i), 1:1/50:size(resub_bin3, 1)); 
+    up = [zeros(150, 1); up'; zeros(99, 1)];
+    resub3(:,i) = up(1:300000);
+end 
+
 %% Calculate correlation
 
 corr1 = zeros(1, 5);
 corr2 = zeros(1, 5);
 corr3 = zeros(1, 5);
 for i = 1:5             % iterate over fingers
-    corr1(i) = corr(glove1(:, i), up1(:, i));
-    corr2(i) = corr(glove2(:, i), up2(:, i));
-    corr3(i) = corr(glove3(:, i), up3(:, i));
+    corr1(i) = corr(glove1(:, i), up1(:, i).*resub1(:,i));
+    corr2(i) = corr(glove2(:, i), up2(:, i).*resub2(:,i));
+    corr3(i) = corr(glove3(:, i), up3(:, i).*resub3(:,i));
 end
 
 avgcorr1 = mean(corr1)
@@ -133,6 +200,8 @@ crosscorr1 = zeros(numfold, 5);
 crosscorr2 = zeros(numfold, 5);
 crosscorr3 = zeros(numfold, 5);
 for i = 1:length(folds)     % fold that is testing set
+    disp(['Running Fold ' num2str(i)]);
+    
     trainfold1 = [];
     fingers1 = [];
     trainfold2 = [];
@@ -154,14 +223,18 @@ for i = 1:length(folds)     % fold that is testing set
         end
     end
     
+    % make binary labels by thresholding 
+    thresh = 1;
+    fingers1_bin = fingers1 >= thresh;
+    thresh = 0.8;
+    fingers2_bin = fingers2 >= thresh;
+    thresh = 0.6;
+    fingers3_bin = fingers3 >= thresh;
+
     % train model
-    Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :));
-    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :));
-    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :));
-    
-%     Y1 = linreg_new(trainfold1, fingers1, feat1(folds{i}, :));
-%     Y2 = linreg_new(trainfold2, fingers2, feat2(folds{i}, :));
-%     Y3 = linreg_new(trainfold3, fingers3, feat3(folds{i}, :));
+    Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :), 6);
+    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :), 6);
+    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :), 6);
     
     up1 = [];
     up2 = [];
@@ -177,13 +250,69 @@ for i = 1:length(folds)     % fold that is testing set
     up2 = [zeros(150, 5); up2; zeros(99, 5)];
     up3 = [zeros(150, 5); up3; zeros(99, 5)];
     
+    % get binary predictions
+    resub_bin1 = [];
+    resub_bin2 = [];
+    resub_bin3 = [];
+    
+    for k = 1:5
+        model1 = fitcknn(trainfold1, fingers1_bin(:,k), ...
+            'Distance', 'Euclidean', ...
+            'Exponent', [], ...
+            'NumNeighbors', 1, ...
+            'DistanceWeight', 'Equal', ...
+            'Standardize', true, ...
+            'ClassNames', [0; 1]);
+        [resubs, ~, ~] = predict(model1, feat1(folds{i}, :));
+        resub_bin1(:,k) = resubs;
+
+        model2 = fitcknn(trainfold2, fingers2_bin(:,k), ...
+            'Distance', 'Euclidean', ...
+            'Exponent', [], ...
+            'NumNeighbors', 1, ...
+            'DistanceWeight', 'Equal', ...
+            'Standardize', true, ...
+            'ClassNames', [0; 1]);
+        [resubs, ~, ~] = predict(model2, feat2(folds{i}, :));
+        resub_bin2(:,k) = resubs;
+
+        model3 = fitcknn(trainfold3, fingers3_bin(:,k), ...
+            'Distance', 'Euclidean', ...
+            'Exponent', [], ...
+            'NumNeighbors', 1, ...
+            'DistanceWeight', 'Equal', ...
+            'Standardize', true, ...
+            'ClassNames', [0; 1]);
+        [resubs, ~, ~] = predict(model3, feat3(folds{i}, :));
+        resub_bin3(:,k) = resubs;
+    end 
+    
+    % upsample binary predictions 
+    resub1 = [];
+    resub2 = [];
+    resub3 = [];
+
+    for s = 1:5 
+        up = spline(1:size(resub_bin1, 1), resub_bin1(:,s), 1:1/50:size(resub_bin1, 1)); 
+        up = [zeros(150, 1); up'; zeros(99, 1)];
+        resub1(:,s) = up(1:30000);
+
+        up = spline(1:size(resub_bin2, 1), resub_bin2(:,s), 1:1/50:size(resub_bin2, 1)); 
+        up = [zeros(150, 1); up'; zeros(99, 1)];
+        resub2(:,s) = up(1:30000);
+
+        up = spline(1:size(resub_bin3, 1), resub_bin3(:,s), 1:1/50:size(resub_bin3, 1)); 
+        up = [zeros(150, 1); up'; zeros(99, 1)];
+        resub3(:,s) = up(1:30000);
+    end 
+    
     testlabel1 = glove1(foldsfull{i}, :);
     testlabel2 = glove2(foldsfull{i}, :);
     testlabel3 = glove3(foldsfull{i}, :);
-    for k = 1:5
-        crosscorr1(i, k) = corr(testlabel1(:, k), up1(:, k));
-        crosscorr2(i, k) = corr(testlabel2(:, k), up2(:, k));
-        crosscorr3(i, k) = corr(testlabel3(:, k), up3(:, k));
+    for q = 1:5
+        crosscorr1(i, q) = corr(testlabel1(:, q), up1(1:30000, q).*resub1(:,q));
+        crosscorr2(i, q) = corr(testlabel2(:, q), up2(1:30000, q).*resub2(:,q));
+        crosscorr3(i, q) = corr(testlabel3(:, q), up3(1:30000, q).*resub3(:,q));
     end
 end
 
@@ -193,6 +322,9 @@ avgcorr3 = mean(crosscorr3)
 
 totalcorr = [avgcorr1([1, 2, 3, 5]), avgcorr2([1, 2, 3, 5]), avgcorr3([1, 2, 3, 5])];
 avgcorr = mean(totalcorr)
+
+%% BELOW IS ALL LOG REG STUFF - NOT BEING USED RIGHT NOW 
+%  instead I built in the knn binary predictor 
 
 %% Logistic Regression: Create Labels
 
