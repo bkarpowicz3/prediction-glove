@@ -26,11 +26,18 @@ test3 = session.data(1).getvalues(1:147500, 1:64);
 
 %% Extract Features 
 
-feat1 = extractFeatures_v2(ecog1, sR);
-feat2 = extractFeatures_v2(ecog2, sR);
-feat3 = extractFeatures_v2(ecog3, sR);
+feat1 = extractFeatures_v1(ecog1, sR);
+feat2 = extractFeatures_v1(ecog2, sR);
+feat3 = extractFeatures_v1(ecog3, sR);
 
 save('features.mat', 'feat1', 'feat2', 'feat3');
+
+%%
+% subject 1 - 55
+% subject 2 - 21 & 38
+
+feat1 = [feat1(:, 1:329) feat1(:, 336:end)];
+feat2 = [feat2(:, 1:125) feat2(:, 132:227) feat2(:, 234:end)];
 
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
@@ -49,10 +56,30 @@ glove2_down = glove2_down(1:end-1, :);
 glove3_down = glove3_down(1:end-1, :);
 
 %% Linear Regression 
+numFeats = 6;
 
-Y1 = linreg_v2(feat1, glove1_down, feat1);
-Y2 = linreg_v2(feat2, glove2_down, feat2);
-Y3 = linreg_v2(feat3, glove3_down, feat3);
+Y1 = linreg(feat1, glove1_down, feat1, numFeats);
+Y2 = linreg(feat2, glove2_down, feat2, numFeats);
+Y3 = linreg(feat3, glove3_down, feat3, numFeats);
+
+%% lasso test
+
+R1 = makeR(feat1);
+R2 = makeR(feat2);
+R3 = makeR(feat3);
+Y1 = zeros(size(R1, 1), 5);
+Y2 = zeros(size(R2, 1), 5);
+Y3 = zeros(size(R3, 1), 5);
+for i = 1:5
+    Y1(:, i) = lassoReg(R1, glove1_down(:, i), R1);
+    disp(['subject 1 finger ' num2str(i) ' done'])
+    
+    Y2(:, i) = lassoReg(R2, glove2_down(:, i), R2);
+    disp(['subject 1 finger ' num2str(i) ' done'])
+    
+    Y3(:, i) = lassoReg(R3, glove3_down(:, i), R3);
+    disp(['subject 1 finger ' num2str(i) ' done'])
+end
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
@@ -63,15 +90,15 @@ up3 = [];
 
 for i = 1:5
     up1(:, i) = spline(1:size(Y1, 1), Y1(:, i), 1:1/50:size(Y1, 1)); %off by 1 problem?? should be 1/50
-    up2(:,i) = spline(1:size(Y2, 1), Y2(:,i), 1:1/50:size(Y2, 1));
-    up3(:,i) = spline(1:size(Y3, 1), Y3(:,i), 1:1/50:size(Y3, 1));
+    up2(:, i) = spline(1:size(Y2, 1), Y2(:, i), 1:1/50:size(Y2, 1));
+    up3(:, i) = spline(1:size(Y3, 1), Y3(:, i), 1:1/50:size(Y3, 1));
 end 
 
 %% Zero pad upsampled 
 
-up1 = [zeros(150, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
-up2 = [zeros(150, 5); up2; zeros(49, 5)];
-up3 = [zeros(150, 5); up3; zeros(49, 5)];
+up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
+up2 = [zeros(150, 5); up2; zeros(99, 5)];
+up3 = [zeros(150, 5); up3; zeros(99, 5)];
 
 %% Visualize prediction of train data 
 
@@ -122,7 +149,7 @@ end
 crosscorr1 = zeros(numfold, 5);
 crosscorr2 = zeros(numfold, 5);
 crosscorr3 = zeros(numfold, 5);
-for i = 1%:length(folds)     % fold that is testing set
+for i = 1:length(folds)     % fold that is testing set
     trainfold1 = [];
     fingers1 = [];
     trainfold2 = [];
@@ -149,6 +176,10 @@ for i = 1%:length(folds)     % fold that is testing set
     Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :));
     Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :));
     
+%     Y1 = linreg_new(trainfold1, fingers1, feat1(folds{i}, :));
+%     Y2 = linreg_new(trainfold2, fingers2, feat2(folds{i}, :));
+%     Y3 = linreg_new(trainfold3, fingers3, feat3(folds{i}, :));
+    
     up1 = [];
     up2 = [];
     up3 = [];
@@ -159,9 +190,9 @@ for i = 1%:length(folds)     % fold that is testing set
         up3(:, l) = spline(1:size(Y3, 1), Y3(:, l), 1:1/50:size(Y3, 1));
     end
     
-    up1 = [zeros(150, 5); up1; zeros(49, 5)];   % pad equivalent of 2 windows in the beginning
-    up2 = [zeros(150, 5); up2; zeros(49, 5)];
-    up3 = [zeros(150, 5); up3; zeros(49, 5)];
+    up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
+    up2 = [zeros(150, 5); up2; zeros(99, 5)];
+    up3 = [zeros(150, 5); up3; zeros(99, 5)];
     
     testlabel1 = glove1(foldsfull{i}, :);
     testlabel2 = glove2(foldsfull{i}, :);
@@ -180,42 +211,8 @@ avgcorr3 = mean(crosscorr3)
 totalcorr = [avgcorr1([1, 2, 3, 5]), avgcorr2([1, 2, 3, 5]), avgcorr3([1, 2, 3, 5])];
 avgcorr = mean(totalcorr)
 
-%% Testing extract features
-
-testfeat1 = extractFeatures_v2(test1, sR);
-testfeat2 = extractFeatures_v2(test2, sR);
-testfeat3 = extractFeatures_v2(test3, sR);
-
-save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
-
-%%
-
-testpred1 = linreg(feat1, glove1_down, testfeat1);
-testpred2 = linreg(feat2, glove2_down, testfeat2);
-testpred3 = linreg(feat3, glove2_down, testfeat3);
-
-testup1 = [];
-testup2 = [];
-testup3 = [];
-
-for i = 1:5
-    testup1(:, i) = spline(1:size(testpred1, 1), testpred1(:, i), 1:1/50:size(testpred1, 1)); %off by 1 problem?? should be 1/50
-    testup2(:, i) = spline(1:size(testpred2, 1), testpred2(:, i), 1:1/50:size(testpred2, 1));
-    testup3(:, i) = spline(1:size(testpred3, 1), testpred3(:, i), 1:1/50:size(testpred3, 1));
-end 
-
-testup1 = [zeros(150, 5); testup1; zeros(49, 5)];
-testup2 = [zeros(150, 5); testup2; zeros(49, 5)];
-testup3 = [zeros(150, 5); testup3; zeros(49, 5)];
-
-predicted_dg = cell(3, 1);
-predicted_dg{1} = testup1(1:147500, 1:5);
-predicted_dg{2} = testup2(1:147500, 1:5);
-predicted_dg{3} = testup3(1:147500, 1:5);
-
-save('checkpoint1.mat', 'predicted_dg');
-
 %% Logistic Regression: Create Labels
+
 % Threshold at 1.4 
 threshold = 1.4;
 biglove1 = double((glove1 > threshold));
@@ -244,12 +241,14 @@ end
 disp('Finished logistic thresholding')
 
 %% Visualize threshold over raw data
+
 figure % change threshold for glove 3 to be at 0.5
 plot(glove3(:,3))
 hold on
 plot(biglove{1, 3}(:,3))
 
 %% Downsample new labels to match features
+
 biglove1_down = [];
 biglove2_down = [];
 biglove3_down = [];
@@ -269,6 +268,7 @@ biglove2_down = biglove2_down(1:end-1, :);
 biglove3_down = biglove3_down(1:end-1, :);
 
 %% Train logistic classifier
+
 log1 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
 prob1 = mnrval(log1, feat1);
 log2 = mnrfit(feat1, biglove1_down, 'Interactions', 'off');
