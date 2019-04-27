@@ -13,27 +13,36 @@ function Y = linreg(features, labels, testing, featsPer)
 
     % create R matrix for testing (if different than training)
     testM = size(testing, 1);
-    testR = ones(testM-N+1, numFeats*N);
+    testR = ones(testM-N+1, numFeats*N+1);
     if ~isequal(features, testing)
         for i = 1:(testM-N+1) % Edited
             for k = 1:numChannels       % over # channels
-                row = testing(i:i+N-1, ((k-1)*featsPer+1):((k-1)*featsPer+featsPer))';
-                row = reshape(row, 1, featsPer*N);
-                idx = (k-1)*N*featsPer+2;
-                testR(i, idx:idx+N*featsPer-1) = row;
+%                 row = testing(i:i+N-1, ((k-1)*featsPer+1):((k-1)*featsPer+featsPer))';
+%                 row = reshape(row, 1, featsPer*N);
+%                 idx = (k-1)*N*featsPer+2;
+%                 testR(i, idx:idx+N*featsPer-1) = row;
+
+                row = testing(i:i+N-1, :)';
+                row = reshape(row, 1, featsPer*N*numChannels);
+                testR(i, 2:end) = row;
             end
         end
+        testR(end+1:end+N, :) = testR(1:N, 1:numFeats*N+1);
     end
 
-    R = ones(M-N+1, numFeats*N);
+    R = ones(M-N+1, numFeats*N+1);
     %for each row
     for i = 1:(M-N+1) % Edited
         % fixed pretty sure...
         for j = 1:numChannels       % over # channels
-            row = features(i:i+N-1, ((j-1)*featsPer+1):((j-1)*featsPer+featsPer))';
-            row = reshape(row, 1, featsPer*N);
-            idx = (j-1)*N*featsPer+2;
-            R(i, idx:idx+N*featsPer-1) = row;
+%             row = features(i:i+N-1, ((j-1)*featsPer+1):((j-1)*featsPer+featsPer))';
+%             row = reshape(row, 1, featsPer*N);
+%             idx = (j-1)*N*featsPer+2;
+%             R(i, idx:idx+N*featsPer-1) = row;
+
+            row = features(i:i+N-1, :)';
+            row = reshape(row, 1, featsPer*N*numChannels);
+            R(i, 2:end) = row;
         end
     end 
     R(end+1:end+N, :) = R(1:N, 1:numFeats*N+1);

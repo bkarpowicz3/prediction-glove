@@ -62,25 +62,6 @@ Y1 = linreg(feat1, glove1_down, feat1, numFeats);
 Y2 = linreg(feat2, glove2_down, feat2, numFeats);
 Y3 = linreg(feat3, glove3_down, feat3, numFeats);
 
-%% lasso test
-
-R1 = makeR(feat1);
-R2 = makeR(feat2);
-R3 = makeR(feat3);
-Y1 = zeros(size(R1, 1), 5);
-Y2 = zeros(size(R2, 1), 5);
-Y3 = zeros(size(R3, 1), 5);
-for i = 1:5
-    Y1(:, i) = lassoReg(R1, glove1_down(:, i), R1);
-    disp(['subject 1 finger ' num2str(i) ' done'])
-    
-    Y2(:, i) = lassoReg(R2, glove2_down(:, i), R2);
-    disp(['subject 1 finger ' num2str(i) ' done'])
-    
-    Y3(:, i) = lassoReg(R3, glove3_down(:, i), R3);
-    disp(['subject 1 finger ' num2str(i) ' done'])
-end
-
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
 
@@ -96,9 +77,13 @@ end
 
 %% Zero pad upsampled 
 
-up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
-up2 = [zeros(150, 5); up2; zeros(99, 5)];
-up3 = [zeros(150, 5); up3; zeros(99, 5)];
+% up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
+% up2 = [zeros(150, 5); up2; zeros(99, 5)];
+% up3 = [zeros(150, 5); up3; zeros(99, 5)];
+
+up1 = [zeros(150, 5); up1(1:299850, :)];   % pad equivalent of 2 windows in the beginning
+up2 = [zeros(150, 5); up2(1:299850, :)];
+up3 = [zeros(150, 5); up3(1:299850, :)];
 
 %% Visualize prediction of train data 
 
@@ -106,8 +91,6 @@ figure();
 plot(up1(:, 1));
 hold on;
 plot(glove1(:, 1)); 
-
-% this looks quite bad
 
 %% Calculate correlation
 
