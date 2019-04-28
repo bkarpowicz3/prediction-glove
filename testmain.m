@@ -1,13 +1,28 @@
 %% Testing extract features
 
-testfeat1 = extractFeatures_v1(test1, sR);
-testfeat2 = extractFeatures_v1(test2, sR);
-testfeat3 = extractFeatures_v1(test3, sR);
+numFeats = 6;
+testfeat1 = extractFeatures(test1, sR, numFeats);
+testfeat2 = extractFeatures(test2, sR, numFeats);
+testfeat3 = extractFeatures(test3, sR, numFeats);
 
 save('testfeatures.mat', 'testfeat1', 'testfeat2', 'testfeat3');
 
+%% Normalize features
+
+for i = 1:size(testfeat1, 2)
+    testfeat1(:, i) = (testfeat1(:, i) - mean(testfeat1(:, i)))./ std(testfeat1(:, i));
+end
+
+for i = 1:size(feat2, 2)
+    testfeat2(:, i) = (testfeat2(:, i) - mean(testfeat2(:, i)))./ std(testfeat2(:, i));
+end
+
+for i = 1:size(testfeat3, 2)
+    testfeat3(:, i) = (testfeat3(:, i) - mean(testfeat3(:, i)))./ std(testfeat3(:, i));
+end
+
 %%
-numFeats = 6;
+numFeats = 9;
 testpred1 = linreg(feat1, glove1_down, testfeat1, numFeats);
 testpred2 = linreg(feat2, glove2_down, testfeat2, numFeats);
 testpred3 = linreg(feat3, glove2_down, testfeat3, numFeats);
@@ -22,9 +37,23 @@ for i = 1:5
     testup3(:, i) = spline(1:size(testpred3, 1), testpred3(:, i), 1:1/50:size(testpred3, 1));
 end 
 
-testup1 = [zeros(150, 5); testup1(1:147350, :)];
-testup2 = [zeros(150, 5); testup2(1:147350, :)];
-testup3 = [zeros(150, 5); testup3(1:147350, :)];
+testup1 = [zeros(150, 5); testup1; zeros(99, 5)];
+testup2 = [zeros(150, 5); testup2; zeros(99, 5)];
+testup3 = [zeros(150, 5); testup3; zeros(99, 5)];
+
+% testup1 = [zeros(200, 5); testup1(1:147300, :)];
+% testup2 = [zeros(200, 5); testup2(1:147300, :)];
+% testup3 = [zeros(200, 5); testup3(1:147300, :)];
+
+%% Postprocess with low pass
+
+fc2 = 3;    % cutoff frequency
+[b2, a2] = butter(6, fc2/(sR/2));
+for i = 1:5
+    testup1(:, i) = filtfilt(b2, a2, testup1(:, i));
+    testup2(:, i) = filtfilt(b2, a2, testup2(:, i));
+    testup3(:, i) = filtfilt(b2, a2, testup3(:, i));
+end
 
 %% Postprocess finger predictions 
 sR = 1000;

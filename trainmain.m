@@ -26,9 +26,10 @@ test3 = session.data(1).getvalues(1:147500, 1:64);
 
 %% Extract Features 
 
-feat1 = extractFeatures_v1(ecog1, sR);
-feat2 = extractFeatures_v1(ecog2, sR);
-feat3 = extractFeatures_v1(ecog3, sR);
+numFeats = 6;
+feat1 = extractFeatures(ecog1, sR, numFeats);
+feat2 = extractFeatures(ecog2, sR, numFeats);
+feat3 = extractFeatures(ecog3, sR, numFeats);
 
 save('features.mat', 'feat1', 'feat2', 'feat3');
 
@@ -38,6 +39,16 @@ save('features.mat', 'feat1', 'feat2', 'feat3');
 
 feat1 = [feat1(:, 1:329) feat1(:, 336:end)];
 feat2 = [feat2(:, 1:125) feat2(:, 132:227) feat2(:, 234:end)];
+
+%% Filter Glove data with Lowpass
+
+fc = 3;    % cutoff frequency
+[b,a] = butter(6,fc/(sR/2));
+for i = 1:5
+    glove1(:, i) = filtfilt(b, a, glove1(:, i));
+    glove2(:, i) = filtfilt(b, a, glove2(:, i));
+    glove3(:, i) = filtfilt(b, a, glove3(:, i));
+end
 
 %% Downsample glove data 
 % Need to bring samples down to every 50ms to align with features.
@@ -55,12 +66,34 @@ glove1_down = glove1_down(1:end-1, :);
 glove2_down = glove2_down(1:end-1, :);
 glove3_down = glove3_down(1:end-1, :);
 
+%% Normalize features (not helpful for linreg)
+
+for i = 1:size(feat1, 2)
+    feat1(:, i) = (feat1(:, i) - mean(feat1(:, i)))./ std(feat1(:, i));
+end
+
+for i = 1:size(feat2, 2)
+    feat2(:, i) = (feat2(:, i) - mean(feat2(:, i)))./ std(feat2(:, i));
+end
+
+for i = 1:size(feat3, 2)
+    feat3(:, i) = (feat3(:, i) - mean(feat3(:, i)))./ std(feat3(:, i));
+end
+
 %% Linear Regression 
-numFeats = 6;
+numFeats = 9;       % CHANGE
 
 Y1 = linreg(feat1, glove1_down, feat1, numFeats);
 Y2 = linreg(feat2, glove2_down, feat2, numFeats);
 Y3 = linreg(feat3, glove3_down, feat3, numFeats);
+
+%% Alternative iterative regression (use prerun weights and multiply by features (R)
+finger = 5;
+
+features = makeR(feat1(1:4000, :), 9);
+features = features(:, 2:end);
+targets = [glove1_down(N:4000, finger); glove1_down(1:N-1, finger)];
+[Y1, weights, cost_history] = linregiter(features, targets, zeros(size(features, 2)+1, 1), .01, 10000);
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
@@ -84,6 +117,63 @@ end
 up1 = [zeros(150, 5); up1(1:299850, :)];   % pad equivalent of 2 windows in the beginning
 up2 = [zeros(150, 5); up2(1:299850, :)];
 up3 = [zeros(150, 5); up3(1:299850, :)];
+
+% up1 = [zeros(200, 5); up1(1:299800, :)];   % pad equivalent of 2 windows in the beginning
+% up2 = [zeros(200, 5); up2(1:299800, :)];
+% up3 = [zeros(200, 5); up3(1:299800, :)];
+
+
+%% Postprocess by filtering
+
+fc2 = 3;    % cutoff frequency
+[b2, a2] = butter(6, fc2/(sR/2));
+for i = 1:5
+    up1(:, i) = filtfilt(b2, a2, up1(:, i));
+    up2(:, i) = filtfilt(b2, a2, up2(:, i));
+    up3(:, i) = filtfilt(b2, a2, up3(:, i));
+end
+
+%% Postprocess finger predictions 
+sR = 1000;
+thresh = 0.8;
+below_thresh1 = up1 .* (up1 <= thresh);
+above_thresh1 = up1 .* (up1 > thresh); 
+thresh = 0.8;
+below_thresh2 = up2 .* (up2 <= thresh);
+above_thresh2 = up2 .* (up2 > thresh); 
+thresh = 0.7;
+below_thresh3 = up3 .* (up3 <= thresh);
+above_thresh3 = up3 .* (up3 > thresh); 
+M = @(x) mean(x);
+winLen = 800e-3;
+winDisp = 400e-3;
+
+up1 = zeros(300000, 5);
+up2 = zeros(300000, 5);
+up3 = zeros(300000, 5);
+
+for i = 1:5
+%     winLen = 800e-3;
+%     winDisp = 400e-3;
+    smoothed_glove1 = MovingWinFeats(below_thresh1(:,i), sR, winLen, winDisp, M);
+    smoothed_glove1(end+1:end+2) = [0 0];
+    smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/400:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
+    up1(:,i) = above_thresh1(:,i) + smoothed_glove1_(1:end-1)';
+    
+%     winLen = 1000e-3;
+%     winDisp = 500e-3;
+    smoothed_glove2 = MovingWinFeats(below_thresh2(:,i), sR, winLen, winDisp, M);
+    smoothed_glove2(end+1:end+2) = [0 0];
+    smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/400:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
+    up2(:,i) = above_thresh2(:,i) + smoothed_glove2_(1:end-1)';
+    
+%     winLen = 500e-3;
+%     winDisp = 250e-3;
+    smoothed_glove3 = MovingWinFeats(below_thresh3(:,i), sR, winLen, winDisp, M);
+    smoothed_glove3(end+1:end+2) = [0 0];
+    smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/400:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
+    up3(:,i) = above_thresh3(:,i) + smoothed_glove3_(1:end-1)';
+end
 
 %% Visualize prediction of train data 
 
@@ -155,9 +245,9 @@ for i = 1:length(folds)     % fold that is testing set
     end
     
     % train model
-    Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :));
-    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :));
-    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :));
+    Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :), numFeats);
+    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :), numFeats);
+    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :), numFeats);
     
 %     Y1 = linreg_new(trainfold1, fingers1, feat1(folds{i}, :));
 %     Y2 = linreg_new(trainfold2, fingers2, feat2(folds{i}, :));
@@ -173,13 +263,66 @@ for i = 1:length(folds)     % fold that is testing set
         up3(:, l) = spline(1:size(Y3, 1), Y3(:, l), 1:1/50:size(Y3, 1));
     end
     
+%     up1 = [zeros(200, 5); up1(1:29800, :)];   % pad equivalent of 2 windows in the beginning
+%     up2 = [zeros(200, 5); up2(1:29800, :)];
+%     up3 = [zeros(200, 5); up3(1:29800, :)];
+    
     up1 = [zeros(150, 5); up1; zeros(99, 5)];   % pad equivalent of 2 windows in the beginning
     up2 = [zeros(150, 5); up2; zeros(99, 5)];
     up3 = [zeros(150, 5); up3; zeros(99, 5)];
     
+%     for n = 1:5
+%         up1(:, n) = filtfilt(b2, a2, up1(:, n));
+%         up2(:, n) = filtfilt(b2, a2, up2(:, n));
+%         up3(:, n) = filtfilt(b2, a2, up3(:, n));
+%     end
+    
+    thresh = 0.8;
+    below_thresh1 = up1 .* (up1 <= thresh);
+    above_thresh1 = up1 .* (up1 > thresh);
+    thresh = 0.8;
+    below_thresh2 = up2 .* (up2 <= thresh);
+    above_thresh2 = up2 .* (up2 > thresh);
+    thresh = 0.7;
+    below_thresh3 = up3 .* (up3 <= thresh);
+    above_thresh3 = up3 .* (up3 > thresh);
+    M = @(x) mean(x);
+    winLen = 800e-3;
+    winDisp = 400e-3;
+    
+    up1 = zeros(30000, 5);
+    up2 = zeros(30000, 5);
+    up3 = zeros(30000, 5);
+    
+    for m = 1:5
+        %     winLen = 800e-3;
+        %     winDisp = 400e-3;
+        smoothed_glove1 = MovingWinFeats(below_thresh1(:,m), sR, winLen, winDisp, M);
+        smoothed_glove1(end+1:end+2) = [0 0];
+        smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/400:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
+        up1(:,m) = above_thresh1(:,m) + smoothed_glove1_(1:end-1)';
+        
+        %     winLen = 1000e-3;
+        %     winDisp = 500e-3;
+        smoothed_glove2 = MovingWinFeats(below_thresh2(:,m), sR, winLen, winDisp, M);
+        smoothed_glove2(end+1:end+2) = [0 0];
+        smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/400:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
+        up2(:,m) = above_thresh2(:,m) + smoothed_glove2_(1:end-1)';
+        
+        %     winLen = 500e-3;
+        %     winDisp = 250e-3;
+        smoothed_glove3 = MovingWinFeats(below_thresh3(:,m), sR, winLen, winDisp, M);
+        smoothed_glove3(end+1:end+2) = [0 0];
+        smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/400:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
+        up3(:,m) = above_thresh3(:,m) + smoothed_glove3_(1:end-1)';
+    end
+    
     testlabel1 = glove1(foldsfull{i}, :);
     testlabel2 = glove2(foldsfull{i}, :);
     testlabel3 = glove3(foldsfull{i}, :);
+%     testlabel1 = glove1orig(foldsfull{i}, :);
+%     testlabel2 = glove2orig(foldsfull{i}, :);
+%     testlabel3 = glove3orig(foldsfull{i}, :);
     for k = 1:5
         crosscorr1(i, k) = corr(testlabel1(:, k), up1(:, k));
         crosscorr2(i, k) = corr(testlabel2(:, k), up2(:, k));
