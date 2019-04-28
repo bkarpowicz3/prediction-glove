@@ -2,9 +2,9 @@
 % Tip: run each logistic training in parallel or on different machines
 
 %% Get raw data
-load('raw_data.mat')
 load('4-27_features9.mat')
 load('4-27_testfeatures9.mat')
+load('raw_glove.mat')
 
 %% Get features for all patients
 sR = 1000; % Hz
