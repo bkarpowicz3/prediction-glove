@@ -23,9 +23,76 @@ end
 
 %%
 numFeats = 9;
-testpred1 = linreg(feat1, glove1_down, testfeat1, numFeats);
-testpred2 = linreg(feat2, glove2_down, testfeat2, numFeats);
-testpred3 = linreg(feat3, glove2_down, testfeat3, numFeats);
+% testpred1 = linreg(feat1, glove1_down, testfeat1, numFeats);
+% testpred2 = linreg(feat2, glove2_down, testfeat2, numFeats);
+% testpred3 = linreg(feat3, glove2_down, testfeat3, numFeats);
+
+testR1 = makeR(testfeat1, numFeats);
+testR2 = makeR(testfeat2, numFeats);
+testR3 = makeR(testfeat3, numFeats);
+
+%% normalize R
+features = testR1;
+for i = 2:size(features, 2) % iterate over column
+    %         fmean = np.mean(feature)
+    %         frange = np.amax(feature) - np.amin(feature)
+    fmean = mean(features(:, i));
+    frange = max(features(:, i)) - min(features(:, i));
+    
+    %         #Vector Subtraction
+    %         feature -= fmean
+    features(:, i) = features(:, i) - fmean;
+    
+    %         #Vector Division
+    %         feature /= frange
+    features(:, i) = features(:, i) / frange;
+end
+testR1 = features;
+
+features = testR2;
+for i = 2:size(features, 2) % iterate over column
+    %         fmean = np.mean(feature)
+    %         frange = np.amax(feature) - np.amin(feature)
+    fmean = mean(features(:, i));
+    frange = max(features(:, i)) - min(features(:, i));
+    
+    %         #Vector Subtraction
+    %         feature -= fmean
+    features(:, i) = features(:, i) - fmean;
+    
+    %         #Vector Division
+    %         feature /= frange
+    features(:, i) = features(:, i) / frange;
+end
+testR2 = features;
+
+features = testR3;
+for i = 2:size(features, 2) % iterate over column
+    %         fmean = np.mean(feature)
+    %         frange = np.amax(feature) - np.amin(feature)
+    fmean = mean(features(:, i));
+    frange = max(features(:, i)) - min(features(:, i));
+    
+    %         #Vector Subtraction
+    %         feature -= fmean
+    features(:, i) = features(:, i) - fmean;
+    
+    %         #Vector Division
+    %         feature /= frange
+    features(:, i) = features(:, i) / frange;
+end
+testR3 = features;
+
+%%
+
+testpred1 = [];
+testpred2 = [];
+testpred3 = [];
+for i = 1:5
+    testpred1(:, i) = testR1*weights1(:, i);
+    testpred2(:, i) = testR2*weights2(:, i);
+    testpred3(:, i) = testR3*weights3(:, i);
+end
 
 testup1 = [];
 testup2 = [];
@@ -40,6 +107,10 @@ end
 testup1 = [zeros(150, 5); testup1; zeros(99, 5)];
 testup2 = [zeros(150, 5); testup2; zeros(99, 5)];
 testup3 = [zeros(150, 5); testup3; zeros(99, 5)];
+
+testup1 = testup1(1:147500, :);
+testup2 = testup2(1:147500, :);
+testup3 = testup3(1:147500, :);
 
 % testup1 = [zeros(200, 5); testup1(1:147300, :)];
 % testup2 = [zeros(200, 5); testup2(1:147300, :)];
@@ -99,51 +170,51 @@ end
 
 %% Visualize prediction of train data 
 
-min = 1;
-max = 16000;
+minx = 1;
+maxx = 16000;
 
 figure();
 subplot(4,1,1)
-plot(up1(:, 1));
-xlim([min max])
+plot(up1_new(:, 1));
+xlim([minx maxx])
 subplot(4,1,2)
-plot(up1(:, 2))
-xlim([min max])
+plot(up1_new(:, 2))
+xlim([minx maxx])
 subplot(4,1,3)
-plot(up1(:, 3));
-xlim([min max])
+plot(up1_new(:, 3));
+xlim([minx maxx])
 subplot(4,1,4)
-xlim([min max])
-plot(up1(:, 5)); 
-xlim([min max])
+xlim([minx maxx])
+plot(up1_new(:, 5)); 
+xlim([minx maxx])
 
 figure();
-xlim([min max])
+xlim([minx maxx])
 subplot(4,1,1)
-plot(up2(:, 1));
+plot(up2_new(:, 1));
 subplot(4,1,2)
-plot(up2(:, 2))
+plot(up2_new(:, 2))
 subplot(4,1,3)
-plot(up2(:, 3));
+plot(up2_new(:, 3));
 subplot(4,1,4)
-plot(up2(:, 5)); 
+plot(up2_new(:, 5)); 
 
 figure();
-xlim([min max])
+xlim([minx maxx])
 subplot(4,1,1)
-plot(up3(:, 1));
+plot(up3_new(:, 1));
 subplot(4,1,2)
-plot(up3(:, 2))
+plot(up3_new(:, 2))
 subplot(4,1,3)
-plot(up3(:, 3));
+plot(up3_new(:, 3));
 subplot(4,1,4)
-plot(up3(:, 5)); 
+plot(up3_new(:, 5)); 
 
 %% Submit
 
 predicted_dg = cell(3, 1);
-predicted_dg{1} = testup1(1:147500, 1:5);
-predicted_dg{2} = testup2(1:147500, 1:5);
-predicted_dg{3} = testup3(1:147500, 1:5);
+predicted_dg{1} = up1_new(1:147500, 1:5);
+predicted_dg{2} = up2_new(1:147500, 1:5);
+predicted_dg{3} = up3_new(1:147500, 1:5);
 
 save('linregtest.mat', 'predicted_dg');
