@@ -115,8 +115,6 @@ testup3 = testup3(1:147500, :);
 % testup1 = [zeros(200, 5); testup1(1:147300, :)];
 % testup2 = [zeros(200, 5); testup2(1:147300, :)];
 % testup3 = [zeros(200, 5); testup3(1:147300, :)];
-<<<<<<< HEAD
-=======
 
 %% Postprocess with low pass
 
@@ -127,26 +125,6 @@ for i = 1:5
     testup2(:, i) = filtfilt(b2, a2, testup2(:, i));
     testup3(:, i) = filtfilt(b2, a2, testup3(:, i));
 end
-
-%% Postprocess finger predictions 
-sR = 1000;
-thresh = 0.8;
-below_thresh1 = testup1 .* (testup1 <= thresh);
-above_thresh1 = testup1 .* (testup1 > thresh); 
-thresh = 0.8;
-below_thresh2 = testup2 .* (testup2 <= thresh);
-above_thresh2 = testup2 .* (testup2 > thresh); 
-thresh = 0.7;
-below_thresh3 = testup3 .* (testup3 <= thresh);
-above_thresh3 = testup3 .* (testup3 > thresh); 
-M = @(x) mean(x);
-winLen = 800e-3;
-winDisp = 400e-3;
-
-up1_new = zeros(147500, 5);
-up2_new = zeros(147500, 5);
-up3_new = zeros(147500, 5);
->>>>>>> 47ad7e047f9a846da80180723e4102ba005ae2e9
 
 %% Postprocess with low pass
 
@@ -222,47 +200,47 @@ for i = 1:5
     resub3(:,i) = up(1:147500);
 end
 
-% %% Postprocess finger predictions 
-% sR = 1000;
-% thresh = 0.8;
-% below_thresh1 = testup1 .* (testup1 <= thresh);
-% above_thresh1 = testup1 .* (testup1 > thresh); 
-% thresh = 0.8;
-% below_thresh2 = testup2 .* (testup2 <= thresh);
-% above_thresh2 = testup2 .* (testup2 > thresh); 
-% thresh = 0.7;
-% below_thresh3 = testup3 .* (testup3 <= thresh);
-% above_thresh3 = testup3 .* (testup3 > thresh); 
-% M = @(x) mean(x);
-% winLen = 800e-3;
-% winDisp = 400e-3;
-% 
-% up1_new = zeros(147500, 5);
-% up2_new = zeros(147500, 5);
-% up3_new = zeros(147500, 5);
-% 
-% for i = 1:5
-% %     winLen = 800e-3;
-% %     winDisp = 400e-3;
-%     smoothed_glove1 = MovingWinFeats(below_thresh1(:,i), sR, winLen, winDisp, M);
-%     smoothed_glove1(end+1:end+3) = [0 0 0];
-%     smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/400:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
-%     up1_new(:,i) = above_thresh1(:,i) + smoothed_glove1_(1:end-101)';
-%     
-% %     winLen = 1000e-3;
-% %     winDisp = 500e-3;
-%     smoothed_glove2 = MovingWinFeats(below_thresh2(:,i), sR, winLen, winDisp, M);
-%     smoothed_glove2(end+1:end+3) = [0 0 0];
-%     smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/400:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
-%     up2_new(:,i) = above_thresh2(:,i) + smoothed_glove2_(1:end-101)';
-%     
-% %     winLen = 500e-3;
-% %     winDisp = 250e-3;
-%     smoothed_glove3 = MovingWinFeats(below_thresh3(:,i), sR, winLen, winDisp, M);
-%     smoothed_glove3(end+1:end+3) = [0 0 0];
-%     smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/400:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
-%     up3_new(:,i) = above_thresh3(:,i) + smoothed_glove3_(1:end-101)';
-% end
+%% Postprocess finger predictions 
+sR = 1000;
+thresh = 0.8;
+below_thresh1 = testup1 .* (testup1 <= thresh);
+above_thresh1 = testup1 .* (testup1 > thresh); 
+thresh = 0.8;
+below_thresh2 = testup2 .* (testup2 <= thresh);
+above_thresh2 = testup2 .* (testup2 > thresh); 
+thresh = 0.7;
+below_thresh3 = testup3 .* (testup3 <= thresh);
+above_thresh3 = testup3 .* (testup3 > thresh); 
+M = @(x) mean(x);
+winLen = 800e-3;
+winDisp = 400e-3;
+
+up1_new = zeros(147500, 5);
+up2_new = zeros(147500, 5);
+up3_new = zeros(147500, 5);
+
+for i = 1:5
+%     winLen = 800e-3;
+%     winDisp = 400e-3;
+    smoothed_glove1 = MovingWinFeats(below_thresh1(:,i), sR, winLen, winDisp, M);
+    smoothed_glove1(end+1:end+3) = [0 0 0];
+    smoothed_glove1_ = spline(1:length(smoothed_glove1), smoothed_glove1, 1:1/400:length(smoothed_glove1));  %zoInterp(smoothed_glove, 100);
+    up1_new(:,i) = above_thresh1(:,i) + smoothed_glove1_(1:end-101)';
+    
+%     winLen = 1000e-3;
+%     winDisp = 500e-3;
+    smoothed_glove2 = MovingWinFeats(below_thresh2(:,i), sR, winLen, winDisp, M);
+    smoothed_glove2(end+1:end+3) = [0 0 0];
+    smoothed_glove2_ = spline(1:length(smoothed_glove2), smoothed_glove2, 1:1/400:length(smoothed_glove2));  %zoInterp(smoothed_glove, 100);
+    up2_new(:,i) = above_thresh2(:,i) + smoothed_glove2_(1:end-101)';
+    
+%     winLen = 500e-3;
+%     winDisp = 250e-3;
+    smoothed_glove3 = MovingWinFeats(below_thresh3(:,i), sR, winLen, winDisp, M);
+    smoothed_glove3(end+1:end+3) = [0 0 0];
+    smoothed_glove3_ = spline(1:length(smoothed_glove3), smoothed_glove3, 1:1/400:length(smoothed_glove3));  %zoInterp(smoothed_glove, 100);
+    up3_new(:,i) = above_thresh3(:,i) + smoothed_glove3_(1:end-101)';
+end
 
 %% Visualize prediction of train data 
 
@@ -307,7 +285,6 @@ plot(up2_new(:, 5));
 figure();
 xlim([minx maxx])
 subplot(4,1,1)
-<<<<<<< HEAD
 plot(up3_new(:, 1));
 subplot(4,1,2)
 plot(up3_new(:, 2))
@@ -336,4 +313,4 @@ predicted_dg{3} = up3_new(1:147500, 1:5);
 % predicted_dg{2} = testup2(1:147500, 1:5).*resub2;
 % predicted_dg{3} = testup3(1:147500, 1:5).*resub3;
 
-save('treebaggertest.mat', 'predicted_dg');
+save('linregitertest.mat', 'predicted_dg');
