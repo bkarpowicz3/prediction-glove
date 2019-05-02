@@ -198,6 +198,66 @@ up3 = [zeros(150, 5); up3(1:299850, :)];
 % up2 = [zeros(200, 5); up2(1:299800, :)];
 % up3 = [zeros(200, 5); up3(1:299800, :)];
 
+%% Adaptive Filter
+finger = 1;
+[b, err, res] = fircband(12, [0 0.4 0.5 1], [1 1 0 0], [1 0.2], {'w','c'});
+d = filtfilt(b, 1, glove1(:, finger));
+mu = .2;
+lms = dsp.LMSFilter(13, 'StepSize', mu, 'Method', 'Normalized LMS',...
+    'WeightsOutputPort', true, 'InitialConditions', b.');
+for index = 1
+    d = filtfilt(b, 1, glove1(:, finger));
+    [y, e, w] = lms(up1(:, finger), d);
+end
+
+figure
+plot(e)
+hold on
+plot(glove1(:, finger))
+corr(glove1(:, finger), y)
+
+%%
+N = 12;
+% w = zeros(1,N); % Initialize weights to zeros. w(1) = w(0)
+y = zeros(1,it);
+% e = zeros(1,it);
+sx = 1;
+
+x = up1(:, 1);
+
+xnew = zeros(1, N); % Initialize new data input vector
+
+for i= 1:300000 % Perform it iterations
+    
+    for j=0:N-2 % Form the newest input vector
+        xnew(N-j) = xnew(N-j-1);
+    end
+    xnew(1) = x(i); % Get new data input
+    
+    xn = xnew;
+    
+    yn = sum(w'.*xn); % Calculate the new output
+%     en = d(i) - yn; % Calculate the new error
+    y(i) = yn;
+%     e(i) = en;
+%     
+%     for j=1:N % Update the weights
+%         w(j) = w(j) + 2*en*mu*xn(j);
+%         rw(i,:) = w; % Record the weights
+%     end
+    
+end % End of iteration loop
+
+%% Postprocess by filtering
+
+fc2 = 3;    % cutoff frequency
+[b2, a2] = butter(6, fc2/(sR/2));
+for i = 1:5
+    up1(:, i) = filtfilt(b2, a2, up1(:, i));
+    up2(:, i) = filtfilt(b2, a2, up2(:, i));
+    up3(:, i) = filtfilt(b2, a2, up3(:, i));
+end
+
 %% Postprocess finger predictions 
 sR = 1000;
 thresh = 0.8;
