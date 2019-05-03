@@ -106,9 +106,10 @@ features = features(:, 2:end);
 targets = [glove1_down(N:4000, finger); glove1_down(1:N-1, finger)];
 [Y1, weights, cost_history] = linregiter(features, targets, zeros(size(features, 2)+1, 1), .01, 10000);
 %%
-R1 = makeR(feat1, 9);
-R2 = makeR(feat2, 9);
-R3 = makeR(feat3, 9);
+numFeats = 9;
+R1 = makeR(feat1, numFeats);
+R2 = makeR(feat2, numFeats);
+R3 = makeR(feat3, numFeats);
 
 features = R1;
 for i = 2:size(features, 2) % iterate over column
@@ -162,14 +163,21 @@ end
 R3 = features;
 
 %%
-Y1 = [];
-Y2 = [];
-Y3 = [];
-for i = 1:5
-    Y1(:, i) = R1*weights1(:, i);
-    Y2(:, i) = R2*weights2(:, i);
-    Y3(:, i) = R3*weights3(:, i);
-end 
+Y1 = R1*weights1;
+Y2 = R2*weights2;
+Y3 = R3*weights3;
+
+% Y1l = R1*logsig(f_weights1);
+% Y2l = R2*logsig(f_weights2);
+% Y3l = R3*logsig(f_weights3);
+
+Y1l = logsig(R1*f_weights1);
+Y2l = logsig(R2*f_weights2);
+Y3l = logsig(R3*f_weights3);
+
+Y1 = Y1.*(Y1l.^0.1);
+Y2 = Y2.*(Y2l.^0.1);
+Y3 = Y3.*(Y3l.^0.1);
 
 %% Cubic Interpolation of Results 
 % Bring data from every 50ms back to 1000 Hz. 
@@ -384,20 +392,10 @@ for i = 1:3%length(folds)     % fold that is testing set
     fingers3_bin = fingers3 >= thresh;
 
     % train model
-<<<<<<< HEAD
     Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :), numFeats);
     Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :), numFeats);
     Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :), numFeats);
-    
-%     Y1 = linreg_new(trainfold1, fingers1, feat1(folds{i}, :));
-%     Y2 = linreg_new(trainfold2, fingers2, feat2(folds{i}, :));
-%     Y3 = linreg_new(trainfold3, fingers3, feat3(folds{i}, :));
-=======
-    Y1 = linreg(trainfold1, fingers1, feat1(folds{i}, :), 6);
-    Y2 = linreg(trainfold2, fingers2, feat2(folds{i}, :), 6);
-    Y3 = linreg(trainfold3, fingers3, feat3(folds{i}, :), 6);
->>>>>>> e1cc62c421eacca0684856cac781fb0e5e73f929
-    
+
     up1 = [];
     up2 = [];
     up3 = [];

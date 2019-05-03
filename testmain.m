@@ -84,15 +84,17 @@ end
 testR3 = features;
 
 %%
+testpred1 = testR1*weights1;
+testpred2 = testR2*weights2;
+testpred3 = testR3*weights3;
 
-testpred1 = [];
-testpred2 = [];
-testpred3 = [];
-for i = 1:5
-    testpred1(:, i) = testR1*weights1(:, i);
-    testpred2(:, i) = testR2*weights2(:, i);
-    testpred3(:, i) = testR3*weights3(:, i);
-end
+testpred1l = logsig(testR1*f_weights1);
+testpred2l = logsig(testR2*f_weights2);
+testpred3l = logsig(testR3*f_weights3);
+
+testpred1 = testpred1.*(testpred1l.^0.1);
+testpred2 = testpred2.*(testpred2l.^0.1);
+testpred3 = testpred3.*(testpred3l.^0.1);
 
 testup1 = [];
 testup2 = [];
@@ -115,16 +117,6 @@ testup3 = testup3(1:147500, :);
 % testup1 = [zeros(200, 5); testup1(1:147300, :)];
 % testup2 = [zeros(200, 5); testup2(1:147300, :)];
 % testup3 = [zeros(200, 5); testup3(1:147300, :)];
-
-%% Postprocess with low pass
-
-fc2 = 3;    % cutoff frequency
-[b2, a2] = butter(6, fc2/(sR/2));
-for i = 1:5
-    testup1(:, i) = filtfilt(b2, a2, testup1(:, i));
-    testup2(:, i) = filtfilt(b2, a2, testup2(:, i));
-    testup3(:, i) = filtfilt(b2, a2, testup3(:, i));
-end
 
 %% Postprocess with low pass
 
@@ -305,12 +297,12 @@ plot(up3_new(:, 5));
 
 predicted_dg = cell(3, 1);
 
-predicted_dg{1} = up1_new(1:147500, 1:5);
-predicted_dg{2} = up2_new(1:147500, 1:5);
-predicted_dg{3} = up3_new(1:147500, 1:5);
+% predicted_dg{1} = up1_new(1:147500, 1:5);
+% predicted_dg{2} = up2_new(1:147500, 1:5);
+% predicted_dg{3} = up3_new(1:147500, 1:5);
 
-% predicted_dg{1} = testup1(1:147500, 1:5).*resub1;
-% predicted_dg{2} = testup2(1:147500, 1:5).*resub2;
-% predicted_dg{3} = testup3(1:147500, 1:5).*resub3;
+predicted_dg{1} = testup1(1:147500, 1:5);
+predicted_dg{2} = testup2(1:147500, 1:5);
+predicted_dg{3} = testup3(1:147500, 1:5);
 
-save('linregitertest.mat', 'predicted_dg');
+save('linlogtest.mat', 'predicted_dg');
