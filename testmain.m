@@ -92,9 +92,9 @@ testpred1l = logsig(testR1*f_weights1);
 testpred2l = logsig(testR2*f_weights2);
 testpred3l = logsig(testR3*f_weights3);
 
-testpred1 = testpred1.*(testpred1l.^0.1);
-testpred2 = testpred2.*(testpred2l.^0.1);
-testpred3 = testpred3.*(testpred3l.^0.1);
+testpred1 = testpred1.*(testpred1l.^0.31);
+testpred2 = testpred2.*(testpred2l.^0.67);
+testpred3 = testpred3.*(testpred3l.^0.22);
 
 testup1 = [];
 testup2 = [];

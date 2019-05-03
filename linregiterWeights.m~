@@ -20,7 +20,7 @@ weights2 = zeros(size(features, 2)+1, 5);
 for finger = 1:5
     
     targets = [glove2_down(N:end, finger); glove2_down(1:N-1, finger)];
-    [Y2, weights, cost_history] = linregiter(features, targets, weights2(:, finger), .01, 5000);
+    [Y2, weights, cost_history] = linregiter(features, targets, weights2old(:, finger), .01, 5000);
     weights2(:, finger) = weights;
     
     disp(['subject 2 finger: ' num2str(finger)])
@@ -33,7 +33,7 @@ weights3 = zeros(size(features, 2)+1, 5);
 for finger = 1:5
     
     targets = [glove3_down(N:end, finger); glove3_down(1:N-1, finger)];
-    [Y3, weights, cost_history] = linregiter(features, targets, weights3(:, finger), .01, 5000);
+    [Y3, weights, cost_history] = linregiter(features, targets, weights3old(:, finger), .01, 5000);
     weights3(:, finger) = weights;
     
     disp(['subject 3 finger: ' num2str(finger)])
